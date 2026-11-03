@@ -1,1 +1,1 @@
-# distillation_enables_continual_learning_hcmus
+# distillation_enables_continual_learning

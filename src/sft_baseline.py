@@ -55,24 +55,31 @@ def train_sft(args: argparse.Namespace) -> None:
         tags=["reproduction", "sft", args.task],
     )
 
-    bnb_config = BitsAndBytesConfig(
-        load_in_4bit=True,
-        bnb_4bit_quant_type="nf4",
-        bnb_4bit_compute_dtype=torch.float16,
-        bnb_4bit_use_double_quant=True,
-    )
+    if args.quant_bits == 4:
+        bnb_config = BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_quant_type="nf4",
+            bnb_4bit_compute_dtype=torch.float16,
+            bnb_4bit_use_double_quant=True,
+        )
+    elif args.quant_bits == 8:
+        bnb_config = BitsAndBytesConfig(load_in_8bit=True)
+    else:
+        bnb_config = None
 
     tokenizer = AutoTokenizer.from_pretrained(args.model_name, trust_remote_code=True)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
-    base_model = AutoModelForCausalLM.from_pretrained(
-        args.model_name,
-        quantization_config=bnb_config,
-        device_map="auto",
-        trust_remote_code=True,
-    )
-    base_model = prepare_model_for_kbit_training(base_model)
+    model_kwargs = {"device_map": "auto", "trust_remote_code": True}
+    if bnb_config is not None:
+        model_kwargs["quantization_config"] = bnb_config
+    else:
+        model_kwargs["torch_dtype"] = torch.float16
+
+    base_model = AutoModelForCausalLM.from_pretrained(args.model_name, **model_kwargs)
+    if bnb_config is not None:
+        base_model = prepare_model_for_kbit_training(base_model)
 
     lora_cfg = LoraConfig(
         r=args.lora_r,
@@ -80,7 +87,10 @@ def train_sft(args: argparse.Namespace) -> None:
         lora_dropout=0.05,
         bias="none",
         task_type="CAUSAL_LM",
-        target_modules=["q_proj", "k_proj", "v_proj", "o_proj"],
+        target_modules=[
+            "q_proj", "k_proj", "v_proj", "o_proj",
+            "gate_proj", "up_proj", "down_proj",
+        ],
     )
     model = get_peft_model(base_model, lora_cfg)
 
@@ -150,8 +160,9 @@ if __name__ == "__main__":
     parser.add_argument("--lr", type=float, default=1e-4)
     parser.add_argument("--grad_accum", type=int, default=8)
     parser.add_argument("--max_train", type=int, default=200)
-    parser.add_argument("--lora_r", type=int, default=16)
-    parser.add_argument("--lora_alpha", type=int, default=32)
+    parser.add_argument("--quant_bits", type=int, default=4, choices=[4, 8, 16])
+    parser.add_argument("--lora_r", type=int, default=32)
+    parser.add_argument("--lora_alpha", type=int, default=64)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--output_dir", type=str, default="./checkpoints")
     train_sft(parser.parse_args())

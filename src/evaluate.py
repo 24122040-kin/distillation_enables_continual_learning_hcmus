@@ -48,7 +48,8 @@ def evaluate_new_task(
     task: str,
     seed: int = 42,
     max_test: int = 100,
-    max_new_tokens: int = 256,
+    max_new_tokens: int = 384,
+    quant_bits: int = 4,
 ) -> float:
     """Evaluate a model or LoRA checkpoint on the held-out test set using greedy decoding.
 
@@ -72,22 +73,29 @@ def evaluate_new_task(
     float
         Accuracy percentage in [0.0, 100.0].
     """
-    bnb_config = BitsAndBytesConfig(
-        load_in_4bit=True,
-        bnb_4bit_quant_type="nf4",
-        bnb_4bit_compute_dtype=torch.float16,
-        bnb_4bit_use_double_quant=True,
-    )
+    if quant_bits == 4:
+        bnb_config = BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_quant_type="nf4",
+            bnb_4bit_compute_dtype=torch.float16,
+            bnb_4bit_use_double_quant=True,
+        )
+    elif quant_bits == 8:
+        bnb_config = BitsAndBytesConfig(load_in_8bit=True)
+    else:
+        bnb_config = None
+
     tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
-    model = AutoModelForCausalLM.from_pretrained(
-        model_name,
-        quantization_config=bnb_config,
-        device_map="auto",
-        trust_remote_code=True,
-    )
+    model_kwargs = {"device_map": "auto", "trust_remote_code": True}
+    if bnb_config is not None:
+        model_kwargs["quantization_config"] = bnb_config
+    else:
+        model_kwargs["torch_dtype"] = torch.float16
+
+    model = AutoModelForCausalLM.from_pretrained(model_name, **model_kwargs)
     if checkpoint_dir:
         model = PeftModel.from_pretrained(model, checkpoint_dir)
     model.eval()
@@ -166,6 +174,7 @@ def main() -> None:
     parser.add_argument("--task", type=str, default="science_qa", choices=["science_qa", "tool_use"])
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--max_test", type=int, default=100)
+    parser.add_argument("--quant_bits", type=int, default=4, choices=[4, 8, 16])
     args = parser.parse_args()
 
     wandb.init(
@@ -181,6 +190,7 @@ def main() -> None:
         task=args.task,
         seed=args.seed,
         max_test=args.max_test,
+        quant_bits=args.quant_bits,
     )
     metrics = compare_with_paper(acc, args.task, args.method)
     wandb.log({f"eval/{k}": v for k, v in metrics.items()})

@@ -39,6 +39,7 @@ TRAIN_GPUS=${TRAIN_GPUS:-0}
 EVAL_GPUS=${EVAL_GPUS:-0,1}
 LIMIT=${LIMIT:-0.25}         # fraction of each lm-eval benchmark (T4 time budget)
 export WANDB_PROJECT=${WANDB_PROJECT:-sdft-continual-learning}
+export SDFT_HF_DATASET=${SDFT_HF_DATASET:-Baokin/sdft-official-data}
 export TOKENIZERS_PARALLELISM=false
 
 short() { basename "$1"; }

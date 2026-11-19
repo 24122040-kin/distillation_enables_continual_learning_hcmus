@@ -9,6 +9,7 @@ re-implementation of **Self-Distillation Fine-Tuning (SDFT)** from
 - **Current schedule, 2 people / 2 Kaggle accounts (Vietnamese): [`docs/phan_cong_2_nguoi.md`](docs/phan_cong_2_nguoi.md)**
 - Kaggle runbook, account A (Vietnamese): [`docs/huong_dan_tai_khoan_A.md`](docs/huong_dan_tai_khoan_A.md)
 - Kaggle runbook, accounts B and C (Vietnamese): [`docs/huong_dan_tai_khoan_B_C.md`](docs/huong_dan_tai_khoan_B_C.md)
+- Hugging Face dataset guide (Vietnamese): [`docs/huong_dan_data_huggingface.md`](docs/huong_dan_data_huggingface.md)
 
 ---
 
@@ -33,17 +34,31 @@ We use the **datasets released by the paper's authors**, unchanged:
 | Science Q&A (SciKnowEval Chem L-3, GPT-4o demonstrations) | 2 674 | 507 | `idanshen/Self-Distillation` `data/science_data` |
 | Tool Use (ToolAlpaca, original split) | 4 046 | 97 | `idanshen/Self-Distillation` `data/tooluse_data` |
 
-`src/data_loader.py` reads them programmatically, either from the team's Hugging Face mirror
-(`--data_source hf`, repo id from `$SDFT_HF_DATASET`) or straight from the official GitHub repository pinned
+`src/data_loader.py` reads them programmatically, either from the team's public Hugging Face mirror
+([`Baokin/sdft-official-data`](https://huggingface.co/datasets/Baokin/sdft-official-data),
+`--data_source hf`, repo id from `$SDFT_HF_DATASET` or `--hf_dataset`) or straight from the official GitHub repository pinned
 to commit `d775732` (`--data_source github`). 5 % of the official train split is held out as a fixed
 validation set (data seed 0) for checkpoint selection. `--max_train N` keeps a fixed prefix of one
 permutation, so SFT and SDFT always train on the same examples.
+*(Note: on the HF mirror, split-specific missing columns are padded with typed `null` values so `train` and `test` share one Arrow schema per config without modifying any example values.)*
 
-Create the HF mirror once (needs a Hugging Face write token):
+Load from the public HF mirror directly (no `HF_TOKEN` required):
 
 ```bash
-python scripts/mirror_official_data.py --hf_repo <hf-username>/sdft-official-data
-export SDFT_HF_DATASET=<hf-username>/sdft-official-data
+export SDFT_HF_DATASET=Baokin/sdft-official-data
+# or pass flags explicitly: --data_source hf --hf_dataset Baokin/sdft-official-data
+```
+
+```python
+from datasets import load_dataset
+sci_train = load_dataset("Baokin/sdft-official-data", "science", split="train")
+tool_test = load_dataset("Baokin/sdft-official-data", "tooluse", split="test")
+```
+
+To recreate or update an HF mirror (needs a Hugging Face write token):
+
+```bash
+python scripts/mirror_official_data.py --hf_repo Baokin/sdft-official-data
 ```
 
 ## 3. Repository layout
@@ -65,7 +80,7 @@ export SDFT_HF_DATASET=<hf-username>/sdft-official-data
 ```bash
 pip install -r requirements.txt
 export WANDB_PROJECT=sdft-continual-learning   # public W&B project
-export SDFT_HF_DATASET=<hf-username>/sdft-official-data
+export SDFT_HF_DATASET=Baokin/sdft-official-data
 ```
 
 ```bash

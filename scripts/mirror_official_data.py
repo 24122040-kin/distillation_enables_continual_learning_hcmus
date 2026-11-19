@@ -10,9 +10,9 @@ HF dataset repo with two configurations::
 
 Run once, from a machine logged in with ``huggingface-cli login`` (write token)::
 
-    python scripts/mirror_official_data.py --hf_repo <your-username>/sdft-official-data
+    python scripts/mirror_official_data.py --hf_repo Baokin/sdft-official-data
 
-Then set ``SDFT_HF_DATASET=<your-username>/sdft-official-data`` for every run.
+Then set ``SDFT_HF_DATASET=Baokin/sdft-official-data`` for every run.
 Use ``--dry_run`` to download and print the splits without uploading.
 """
 
@@ -22,7 +22,7 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from datasets import DatasetDict  # noqa: E402
+from datasets import Dataset, DatasetDict, Features  # noqa: E402
 
 from data_loader import HF_CONFIG_NAMES, OFFICIAL_COMMIT, OFFICIAL_REPO, load_raw_split  # noqa: E402
 
@@ -51,7 +51,26 @@ Continual Learning* (Shenfeld et al., 2026, arXiv:2601.19897), taken from
 Mirrored by an HCMUS student team for a course reproduction project; all
 credit belongs to the original authors and to the source benchmarks
 (SciKnowEval, Feng et al. 2024; ToolAlpaca, Tang et al. 2023).
+
+Note: Split-specific missing columns (`prompt`/`answer` on `science` train,
+`messages`/`output_text` on `science` test, and `golden_response` on
+`tooluse` test) are padded with `null` to satisfy Hugging Face's
+single-schema-per-config requirement while preserving all original values
+unmodified.
 """
+
+
+def unify_splits(train_ds: Dataset, test_ds: Dataset) -> tuple[Dataset, Dataset]:
+    """Pad split-specific missing columns with typed nulls so train and test share one schema."""
+    merged = Features({**train_ds.features, **test_ds.features})
+
+    def pad(ds: Dataset) -> Dataset:
+        for col in merged:
+            if col not in ds.column_names:
+                ds = ds.add_column(col, [None] * len(ds))
+        return ds.select_columns(list(merged.keys())).cast(merged)
+
+    return pad(train_ds), pad(test_ds)
 
 
 def main() -> None:
@@ -64,10 +83,10 @@ def main() -> None:
     args = p.parse_args()
 
     for task, config in HF_CONFIG_NAMES.items():
-        dd = DatasetDict({
-            split: load_raw_split(task, split, source="github", cache_dir=args.cache_dir)
-            for split in ("train", "test")
-        })
+        raw_train = load_raw_split(task, "train", source="github", cache_dir=args.cache_dir)
+        raw_test = load_raw_split(task, "test", source="github", cache_dir=args.cache_dir)
+        uni_train, uni_test = unify_splits(raw_train, raw_test)
+        dd = DatasetDict({"train": uni_train, "test": uni_test})
         print(config, dd)
         if not args.dry_run:
             dd.push_to_hub(args.hf_repo, config_name=config, private=args.private)

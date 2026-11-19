@@ -50,6 +50,7 @@ from kaggle_secrets import UserSecretsClient
 
 os.environ["WANDB_API_KEY"] = UserSecretsClient().get_secret("WANDB_API_KEY")
 os.environ["WANDB_PROJECT"] = "sdft-continual-learning"
+os.environ["SDFT_HF_DATASET"] = "Baokin/sdft-official-data"   # tải dữ liệu từ HF mirror (public, không cần HF token)
 # os.environ["WANDB_ENTITY"] = "<tên-team>"   # chỉ khi W&B dùng team; mặc định là tài khoản cá nhân
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"       # mỗi job dùng 1 GPU để thời gian đo khớp ước tính
 wandb.login(key=os.environ["WANDB_API_KEY"], verify=True)

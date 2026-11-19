@@ -4,7 +4,9 @@
 > Tài khoản A chạy thí nghiệm quan trọng nhất của deck: **SDFT trên Qwen2.5-7B, task Science Q&A (E1)**.
 > Lịch tổng của cả nhóm nằm trong `docs/reproduction_plan.md` §5.
 > **Pilot đã chạy (19/11 22:12): dùng `N_SCI=352`.**
-> **Cập nhật 20/11: nhóm chỉ còn 2 tài khoản.** Lịch mới ở `docs/phan_cong_2_nguoi.md`. Sáng 20/11 chạy **`day2_a`** thay cho `eval_sdft e1` (bước 6.3); job này đánh giá thêm cả model gốc.
+> **Cập nhật 20/11:** sáng 20/11 chạy **`day2_a`** ở bước 6.3. Job này **chỉ đánh giá SDFT Science** (~1,5–2 tiếng). Đánh giá model gốc, SFT và Tool Use do người thứ hai chạy, để tiết kiệm quota của Kin.
+> **Quota của Kin (còn 16 tiếng):** `e1_sdft` ~11 tiếng + `day2_a` ~2 tiếng = ~13 tiếng. Còn ~3 tiếng dự phòng, dùng nếu `e1_sdft` phải train nốt (xem 6.1). **Không chạy thêm job nào khác.**
+> Từ notebook đánh giá, dữ liệu tự tải từ dataset Hugging Face của nhóm (tên đã ghi sẵn trong script), không cần sửa ô nào.
 
 ## Tóm tắt việc của A
 
@@ -12,10 +14,10 @@
 |---|---|---|---|
 | **Tối 19/11** | Bước 1–3: tạo notebook, chạy `pilot`, gửi số `N_SCI` / `N_TOOL` cho nhóm | ~1 giờ | Tương tác (ngồi xem) |
 | **Tối 19/11** | Bước 4: chạy `e1_sdft` qua đêm | ~10 giờ | Chạy nền, đóng trình duyệt được |
-| **Sáng 20/11** | Bước 6: chạy `day2_a` (đánh giá SDFT Science + model gốc) | ~3–4 giờ | Chạy nền |
+| **Sáng 20/11** | Bước 6: chạy `day2_a` (đánh giá SDFT Science) | ~1,5–2 giờ | Chạy nền |
 | **Trưa 20/11** | Bước 7: gửi kết quả cho người làm slide | 5 phút | |
 
-Quota GPU cần cho A: khoảng **16 giờ** trong tuần này.
+Quota GPU cần cho A: khoảng **13 giờ** (Kin còn 16).
 
 ---
 
@@ -158,7 +160,7 @@ Thêm **ô 4**, dùng đúng số `N_SCI` của đêm qua:
 
 Bấm **Save Version → Save & Run All**, rồi tắt phiên tương tác. Thời gian chạy:
 - đánh giá chạy **fp16 trên cả 2 GPU** (script tự đặt, không cần sửa ô 1), nhanh hơn nhiều so với 4-bit;
-- tổng cộng val (chọn epoch) + test 507 câu + 6 benchmark khả năng cũ: ước tính ~1–2 giờ. Số đo thật sẽ có sau job `base` của B tối nay.
+- tổng cộng val (chọn epoch) + test 507 câu + 6 benchmark khả năng cũ: ước tính ~1,5–2 giờ.
 
 Trong log sẽ có dòng `best checkpoint: .../epochX (val acc ...)`.
 

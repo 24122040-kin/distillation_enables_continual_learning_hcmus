@@ -82,3 +82,9 @@ for task in ("science", "tool_use"):
     print(f"OK: {task} HF == GitHub")
 '
 ```
+
+Hoặc dùng job có sẵn (in bảng so sánh từng split, kết thúc bằng `DATA OK`):
+
+```bash
+bash scripts/kaggle_jobs.sh check_data
+```

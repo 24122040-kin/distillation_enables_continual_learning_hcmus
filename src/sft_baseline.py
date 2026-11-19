@@ -21,7 +21,7 @@ from transformers import get_cosine_schedule_with_warmup
 import wandb
 
 from common import chat_ids, load_model_and_tokenizer, set_seed
-from data_loader import get_dataset
+from data_loader import get_dataset, resolve_source
 from prompts import student_context
 from sdft_trainer import LORA_TARGETS
 
@@ -83,6 +83,7 @@ def train_sft(args: argparse.Namespace) -> None:
         project=os.environ.get("WANDB_PROJECT", "sdft-continual-learning"),
         name=args.run_name or os.path.basename(out_dir),
         config={**vars(args), "n_train": len(train),
+                "data_source_resolved": resolve_source(args.data_source, args.hf_dataset),
                 "gpu": torch.cuda.get_device_name(0) if torch.cuda.is_available() else "cpu"},
         tags=["lab1", "sft", args.task, model_short] + args.tags,
     )

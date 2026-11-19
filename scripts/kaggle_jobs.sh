@@ -4,7 +4,7 @@
 #   !bash scripts/kaggle_jobs.sh setup          # once per session
 #   !bash scripts/kaggle_jobs.sh pilot          # ~30 min: measures step time, prints N_SCI / N_TOOL
 #
-# Schedule for 3 accounts (A, B, C); see docs/reproduction_plan.md §5 and docs/huong_dan_*.md:
+# Schedule for 3 accounts (A, B, C); see docs/reproduction_plan.md §5:
 #   B, now     : base                    (7B Base evals + teacher accuracy, ~2.5 h; needs no N)
 #   A, evening : pilot, then e1_sdft     (7B SDFT Science, ~10 h)
 #   C, evening : e2_sdft                 (7B SDFT Tool Use, ~10 h; after the pilot numbers)
@@ -12,9 +12,10 @@
 #   A, day 2   : eval_sdft e1            (~2-3 h)
 #   C, day 2   : eval_sdft e2            (~2 h)
 #   B, day 2   : e3_small                (1.5B + 3B Science, ~9 h)
-# Current plan (2 accounts, docs/phan_cong_2_nguoi.md):
+# Current plan (2 accounts; docs/huong_dan_tai_khoan_A.md, docs/huong_dan_nguoi_2.md):
 #   A night : e1_sdft            B night : night2 (GPU0 e2_sdft | GPU1 SFT x2 + E3 3B)
-#   A day 2 : day2_a             B day 2 : day2_b
+#   A day 2 : day2_a (SDFT Science eval)   B day 2 : day2_b (SDFT Tool + SFT x2 + Base evals)
+#   B night 2 (optional): M_E3=Qwen/Qwen2.5-1.5B-Instruct e3_small
 #
 # Pilot on Kaggle T4 (19/11): 50.6 s/example Science, 33.4 s/example Tool Use -> N_SCI=352, N_TOOL=528.
 # Sub-sample sizes come from the pilot: N = 10 h * 3600 / (2 epochs * seconds per example).
@@ -39,7 +40,10 @@ TRAIN_GPUS=${TRAIN_GPUS:-0}
 EVAL_GPUS=${EVAL_GPUS:-0,1}
 LIMIT=${LIMIT:-0.25}         # fraction of each lm-eval benchmark (T4 time budget)
 export WANDB_PROJECT=${WANDB_PROJECT:-sdft-continual-learning}
-export SDFT_HF_DATASET=${SDFT_HF_DATASET:-Baokin/sdft-official-data}
+# Team Hugging Face mirror of the authors' data (scripts/mirror_official_data.py).
+# Empty -> fall back to the official GitHub repo pinned to the same commit (identical files).
+HF_DATASET_DEFAULT="Baokin/sdft-official-data"
+export SDFT_HF_DATASET=${SDFT_HF_DATASET:-$HF_DATASET_DEFAULT}
 export TOKENIZERS_PARALLELISM=false
 
 short() { basename "$1"; }
@@ -147,13 +151,34 @@ PY
     wait "$p0" || echo "!!! GPU0 job exited with an error, see $EV/gpu0_e2_sdft.log" | tee -a "$EV/FAILED.txt"
     wait "$p1" || echo "!!! GPU1 chain exited with an error or timed out, see $EV/gpu1_chain.log" | tee -a "$EV/FAILED.txt"
     tail -n 5 "$EV/gpu0_e2_sdft.log" "$EV/gpu1_chain.log" ;;
-  day2_a)       # Kin, 20/11 morning: both GPUs
-    try best_epoch_eval "$M7" science sdft "$CK/sdft_science_$(short $M7)_n${N_SCI}_ema0.01_forward_s${SEED}"
-    bash "$(readlink -f "$0")" base ;;
-  day2_b)       # second person, 20/11 morning: both GPUs
+  check_data)
+    # HF mirror must be byte-identical (after formatting) to the pinned GitHub copy.
+    python - <<'PY2'
+import os, sys
+sys.path.insert(0, "src")
+from data_loader import get_dataset
+repo = os.environ.get("SDFT_HF_DATASET")
+if not repo:
+    sys.exit("SDFT_HF_DATASET is empty: set HF_DATASET_DEFAULT in scripts/kaggle_jobs.sh")
+ok = True
+for task in ("science", "tool_use"):
+    hf = get_dataset(task, source="hf", hf_dataset=repo)
+    gh = get_dataset(task, source="github")
+    for name, a, b in zip(("train", "val", "test"), hf, gh):
+        same = a == b
+        ok &= same
+        print(f"{task:9s} {name:5s} hf={len(a):5d} github={len(b):5d} identical={same}")
+print("DATA OK" if ok else "DATA MISMATCH")
+sys.exit(0 if ok else 1)
+PY2
+    ;;
+  day2_a)       # Kin, 20/11 morning (~1.5-2 h): only the SDFT Science evaluation, to save Kin's quota
+    try best_epoch_eval "$M7" science sdft "$CK/sdft_science_$(short $M7)_n${N_SCI}_ema0.01_forward_s${SEED}" ;;
+  day2_b)       # second person, 20/11 noon (~6-7 h): SDFT Tool, SFT x2, then the Base model
     try best_epoch_eval "$M7" tool_use sdft "$CK/sdft_tool_use_$(short $M7)_n${N_TOOL}_ema0.01_forward_s${SEED}"
     try best_epoch_eval "$M7" science sft "$CK/sft_science_$(short $M7)_n${N_SCI}_s${SEED}"
-    try best_epoch_eval "$M7" tool_use sft "$CK/sft_tool_use_$(short $M7)_n${N_TOOL}_s${SEED}" ;;
+    try best_epoch_eval "$M7" tool_use sft "$CK/sft_tool_use_$(short $M7)_n${N_TOOL}_s${SEED}"
+    bash "$(readlink -f "$0")" base ;;
   e1_sft)
     train_sft "$M7" science "$N_SCI"
     best_epoch_eval "$M7" science sft "$CK/sft_science_$(short $M7)_n${N_SCI}_s${SEED}" ;;

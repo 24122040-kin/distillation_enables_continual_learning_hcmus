@@ -23,7 +23,7 @@ import wandb
 
 from answer_parsing import score
 from common import chat_ids, generate_batch, load_model_and_tokenizer, set_seed
-from data_loader import get_dataset
+from data_loader import get_dataset, resolve_source
 from prompts import student_context, teacher_context
 
 # Table 5 of the paper (Qwen2.5-7B-Instruct): new-task accuracy and average prior-task score.
@@ -166,7 +166,8 @@ def main() -> None:
     wandb.init(
         project=os.environ.get("WANDB_PROJECT", "sdft-continual-learning"),
         name=name,
-        config={**vars(args), "gpu": torch.cuda.get_device_name(0) if torch.cuda.is_available() else "cpu"},
+        config={**vars(args), "gpu": torch.cuda.get_device_name(0) if torch.cuda.is_available() else "cpu",
+                "data_source_resolved": resolve_source(args.data_source, args.hf_dataset)},
         tags=["lab1", "eval-newtask", tag, args.task, args.split],
     )
     result = evaluate_new_task(

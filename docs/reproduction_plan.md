@@ -83,6 +83,8 @@ E3 dùng lại run 7B của E1, chỉ thêm 1.5B và 3B (rẻ hơn nhiều). Nó
 
 Validation: tách 5% từ train (seed cố định) để chọn checkpoint như paper.
 
+**Nguồn dữ liệu (cập nhật 20/11):** dataset Hugging Face của nhóm, là bản sao nguyên vẹn dữ liệu của tác giả, tạo bằng `scripts/mirror_official_data.py` (yêu cầu của `reproduction.md`: dữ liệu phải tải từ Hugging Face hoặc Kaggle). Job `check_data` xác nhận bản Hugging Face giống hệt bản GitHub ở commit `d775732`. Run SDFT 7B Science đầu tiên (19/11) đọc bản GitHub; dữ liệu hai nguồn giống nhau nên kết quả không bị ảnh hưởng.
+
 ### 3.2 Siêu tham số: paper ↔ code chính thức ↔ nhóm
 
 | Tham số | Paper (Table 3) | Code chính thức | Nhóm (đề xuất) | Ghi chú deviation |
@@ -236,9 +238,9 @@ Giới hạn 12 giờ áp dụng **cho từng run**, không phải cho cả thí
 
 ## 5. Lịch đến deadline 23:59 thứ Bảy 21/11/2026 (3 tài khoản Kaggle)
 
-> **Cập nhật 20/11:** chỉ còn 2 tài khoản. Lịch đang dùng nằm ở `docs/phan_cong_2_nguoi.md`. Tài khoản thứ hai chạy 2 job song song trên 2 GPU (`night2`), và E3 tối nay chỉ chạy 3B. Bảng dưới đây là lịch cũ.
+> **Cập nhật 20/11:** chỉ còn 2 tài khoản; Kin còn 16 giờ quota, người 2 còn 30 giờ. Kin chạy `e1_sdft` + `day2_a` (~13 giờ). Người 2 chạy `night2` + `day2_b`, nhận luôn phần đánh giá model gốc (~19 giờ), và tùy chọn thêm E3 1.5B (~3 giờ). Hướng dẫn đang dùng: `docs/huong_dan_tai_khoan_A.md` (Kin) và `docs/huong_dan_nguoi_2.md`. Tài khoản thứ hai chạy 2 job song song trên 2 GPU (`night2`), và E3 tối nay chỉ chạy 3B. Bảng dưới đây là lịch cũ.
 
-Thời gian GPU là ràng buộc lớn nhất: mỗi run SDFT 7B mất khoảng 9–10 giờ, nên **3 run dài phải chạy song song từ tối nay (19/11)**. Phần đọc paper trong deck (slide 1–23) không cần kết quả, nên viết trong lúc GPU chạy. Job tương ứng nằm trong `scripts/kaggle_jobs.sh`; hướng dẫn từng bước: `docs/huong_dan_tai_khoan_A.md`, `docs/huong_dan_tai_khoan_B_C.md`.
+Thời gian GPU là ràng buộc lớn nhất: mỗi run SDFT 7B mất khoảng 9–10 giờ, nên **3 run dài phải chạy song song từ tối nay (19/11)**. Phần đọc paper trong deck (slide 1–23) không cần kết quả, nên viết trong lúc GPU chạy. Job tương ứng nằm trong `scripts/kaggle_jobs.sh`; hướng dẫn từng bước: `docs/huong_dan_tai_khoan_A.md`, `docs/huong_dan_nguoi_2.md`.
 
 | Thời điểm | Tài khoản A | Tài khoản B | Tài khoản C | Người không trực GPU |
 |---|---|---|---|---|

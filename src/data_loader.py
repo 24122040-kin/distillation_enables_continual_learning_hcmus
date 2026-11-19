@@ -78,6 +78,27 @@ def _download_official_split(task: str, split: str, cache_dir: str) -> Dataset:
     return load_from_disk(local)
 
 
+def resolve_source(source: str = "auto", hf_dataset: Optional[str] = None) -> str:
+    """Describe where the data will actually be read from (logged to W&B with every run).
+
+    Parameters
+    ----------
+    source : str
+        ``"hf"``, ``"github"`` or ``"auto"``.
+    hf_dataset : str, optional
+        Hugging Face repo id; defaults to ``$SDFT_HF_DATASET``.
+
+    Returns
+    -------
+    str
+        ``"hf:<repo id>"`` or ``"github:<repo>@<commit>"``.
+    """
+    hf_dataset = hf_dataset or os.environ.get("SDFT_HF_DATASET")
+    if source == "auto":
+        source = "hf" if hf_dataset else "github"
+    return f"hf:{hf_dataset}" if source == "hf" else f"github:{OFFICIAL_REPO}@{OFFICIAL_COMMIT[:7]}"
+
+
 def load_raw_split(
     task: str,
     split: str,

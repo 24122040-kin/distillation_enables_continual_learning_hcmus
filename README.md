@@ -6,9 +6,8 @@ re-implementation of **Self-Distillation Fine-Tuning (SDFT)** from
 
 - Plan, scope, compute estimates and deviation list: [`docs/reproduction_plan.md`](docs/reproduction_plan.md)
 - Slide-deck outline: [`docs/slide_outline.md`](docs/slide_outline.md)
-- **Current schedule, 2 people / 2 Kaggle accounts (Vietnamese): [`docs/phan_cong_2_nguoi.md`](docs/phan_cong_2_nguoi.md)**
-- Kaggle runbook, account A (Vietnamese): [`docs/huong_dan_tai_khoan_A.md`](docs/huong_dan_tai_khoan_A.md)
-- Kaggle runbook, accounts B and C (Vietnamese): [`docs/huong_dan_tai_khoan_B_C.md`](docs/huong_dan_tai_khoan_B_C.md)
+- Kaggle runbook, person 2 (Vietnamese): [`docs/huong_dan_nguoi_2.md`](docs/huong_dan_nguoi_2.md)
+- Kaggle runbook, account A / Kin (Vietnamese): [`docs/huong_dan_tai_khoan_A.md`](docs/huong_dan_tai_khoan_A.md)
 - Hugging Face dataset guide (Vietnamese): [`docs/huong_dan_data_huggingface.md`](docs/huong_dan_data_huggingface.md)
 
 ---
@@ -34,10 +33,13 @@ We use the **datasets released by the paper's authors**, unchanged:
 | Science Q&A (SciKnowEval Chem L-3, GPT-4o demonstrations) | 2 674 | 507 | `idanshen/Self-Distillation` `data/science_data` |
 | Tool Use (ToolAlpaca, original split) | 4 046 | 97 | `idanshen/Self-Distillation` `data/tooluse_data` |
 
-`src/data_loader.py` reads them programmatically, either from the team's public Hugging Face mirror
-([`Baokin/sdft-official-data`](https://huggingface.co/datasets/Baokin/sdft-official-data),
-`--data_source hf`, repo id from `$SDFT_HF_DATASET` or `--hf_dataset`) or straight from the official GitHub repository pinned
-to commit `d775732` (`--data_source github`). 5 % of the official train split is held out as a fixed
+`src/data_loader.py` reads them programmatically from the team's **public Hugging Face mirror**
+([`Baokin/sdft-official-data`](https://huggingface.co/datasets/Baokin/sdft-official-data); repo id in `$SDFT_HF_DATASET`
+or `--hf_dataset`, set by default in `scripts/kaggle_jobs.sh`), created unchanged from the official GitHub repository
+pinned to commit `d775732`. `--data_source github` reads that pinned copy instead, and
+`bash scripts/kaggle_jobs.sh check_data` verifies that both sources give identical train/val/test examples
+(checked on 20/11: all six splits identical). Every run logs `data_source_resolved` to W&B; the first 7B SDFT
+Science run (started 19/11) read the GitHub copy. 5 % of the official train split is held out as a fixed
 validation set (data seed 0) for checkpoint selection. `--max_train N` keeps a fixed prefix of one
 permutation, so SFT and SDFT always train on the same examples.
 *(Note: on the HF mirror, split-specific missing columns are padded with typed `null` values so `train` and `test` share one Arrow schema per config without modifying any example values.)*

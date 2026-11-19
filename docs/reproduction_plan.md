@@ -196,6 +196,17 @@ Giới hạn 12 giờ áp dụng **cho từng run**, không phải cho cả thí
 
 **Đo thật trước khi quyết định:** chạy 3 bước SDFT 7B trên đúng máy (`--max_train 96 --epochs 1`). Trên W&B có `time/gen_sec` và `time/train_sec` của từng bước. Số giờ mỗi epoch ≈ `time/step_sec` × (số mẫu / batch). Dùng số này thay các ước tính ở trên.
 
+### 4.5b Số đo thật từ pilot (19/11, Kaggle T4, Qwen2.5-7B 4-bit, batch 8 prompt)
+
+| Task | Sinh rollout / bước | Train / bước | **Giây / mẫu** | Ước tính ở §4.2 | 2 epoch đủ dữ liệu | Tập con chọn |
+|---|---|---|---|---|---|---|
+| Science | ~255 s | ~145 s | **50,6** | 13 | 71,4 h | `N_SCI=352` (14%) |
+| Tool Use | ~100 s | ~165 s | **33,4** | 7 | 71,4 h | `N_TOOL=528` (14%) |
+
+- T4 chậm hơn ước tính **~4–5×**. Cả bước sinh lẫn bước train đều chậm; nguyên nhân chính nhiều khả năng là kernel 4-bit của bitsandbytes trên T4. Đây là số liệu thật cho slide độ phức tạp (slide 20) và slide phân tích sai lệch.
+- Với tập con 14%, SDFT chỉ có **44 bước tối ưu** (22 bước/epoch × 2) và SFT 22 bước. Hiệu ứng quên của SFT có thể nhỏ hơn nhiều so với paper (paper dùng toàn bộ dữ liệu và full fine-tuning). Phải ghi rõ điều này khi so với Table 5.
+- **Phần đánh giá chuyển sang fp16, chia model trên 2 GPU T4** (`QUANT_EVAL=16`, mặc định trong `kaggle_jobs.sh`) để tránh bước sinh 4-bit chậm. Adapter LoRA được train trên base 4-bit rồi áp lên base fp16 khi đánh giá, theo cách dùng QLoRA thông thường. Base, SFT và SDFT đều được đánh giá cùng một cách, nên so sánh giữa chúng vẫn công bằng. Ghi đây là một deviation.
+
 ### 4.6 Lưu ý khi resume trên Kaggle
 
 - Checkpoint resume của 7B (2 adapter LoRA cộng trạng thái Adam) nặng khoảng 1,3 GB, lưu trong `checkpoints/<run>/resume/`.
@@ -225,15 +236,15 @@ Giới hạn 12 giờ áp dụng **cho từng run**, không phải cho cả thí
 
 ## 5. Lịch đến deadline 23:59 thứ Bảy 21/11/2026 (3 tài khoản Kaggle)
 
-Thời gian GPU là ràng buộc lớn nhất: mỗi run SDFT 7B mất khoảng 9–10 giờ, nên **3 run dài phải chạy song song từ tối nay (19/11)**. Phần đọc paper trong deck (slide 1–23) không cần kết quả, nên viết trong lúc GPU chạy. Job tương ứng nằm trong `scripts/kaggle_jobs.sh`.
+Thời gian GPU là ràng buộc lớn nhất: mỗi run SDFT 7B mất khoảng 9–10 giờ, nên **3 run dài phải chạy song song từ tối nay (19/11)**. Phần đọc paper trong deck (slide 1–23) không cần kết quả, nên viết trong lúc GPU chạy. Job tương ứng nằm trong `scripts/kaggle_jobs.sh`; hướng dẫn từng bước: `docs/huong_dan_tai_khoan_A.md`, `docs/huong_dan_tai_khoan_B_C.md`.
 
 | Thời điểm | Tài khoản A | Tài khoản B | Tài khoản C | Người không trực GPU |
 |---|---|---|---|---|
 | **T5 19/11** 17:00–18:00 | Mỗi tài khoản: xác minh số điện thoại (để bật GPU và Internet), thêm secret `WANDB_API_KEY`, kiểm tra quota còn ≥ 20 giờ | ← | ← | Commit + push code; tạo HF mirror (`scripts/mirror_official_data.py`, 5 phút) |
-| 18:00–19:00 | `setup` + `pilot` → ra `N_SCI`, `N_TOOL` | — | — | Slide 1–8 (bài toán, các hướng đi trước) |
-| ~19:00 | **`e1_sdft`** (Save & Run All, chạy nền ~9–10 h) | **`e1_sft_base` rồi `e2_sft`** (~8 h) | **`e2_sdft`** (~8–9 h) | Slide 9–13 (đóng góp, ký hiệu, pipeline) |
+| 18:00–19:00 | `setup` + `pilot` → ra `N_SCI`, `N_TOOL` | **`base`** (Base 7B + teacher + lm-eval, ~2,5 h, không cần số pilot) | Chạy thử ô 1–2, chờ số pilot | Slide 1–8 (bài toán, các hướng đi trước) |
+| ~19:00 | **`e1_sdft`** (Save & Run All, chạy nền ~9–10 h) | **`e1_sft` rồi `e2_sft`** (~7 h, sau khi `base` xong) | **`e2_sdft`** (~8–9 h) | Slide 9–13 (đóng góp, ký hiệu, pipeline) |
 | **T6 20/11** ~07:00 | Kiểm tra W&B: loss có NaN không, tỉ lệ bị cắt, đã có `epoch2/` chưa | ← | ← | |
-| 07:30–10:00 | `eval_sdft e1` | **`e3_small`** (1.5B + 3B, ~8 h, đến ~17:00) | `eval_sdft e2` | Slide 14–23 (thành phần, lý thuyết, độ phức tạp, kết quả của paper) |
+| 07:30–10:00 | `eval_sdft e1` | **`e3_small`** (1.5B + 3B, ~8–9 h, đến ~16:00) | `eval_sdft e2` | Slide 14–23 (thành phần, lý thuyết, độ phức tạp, kết quả của paper) |
 | 10:00–22:00 | (dự phòng: chạy lại job hỏng) | | (dự phòng) | Slide 24–26 (scope, setup, kiến trúc); vẽ biểu đồ E1/E2 khi có số |
 | **T7 21/11** sáng | | Kết quả E3 | | Slide 27–33: kết quả, phân tích sai lệch, so sánh với code gốc; bảng link W&B trong README |
 | 16:00 | | | | Soát checklist trong `slide_outline.md` (notes ≤ 500 từ, trích dẫn, < 20 MB); để W&B project ở chế độ public |
@@ -271,7 +282,8 @@ Thời gian GPU là ràng buộc lớn nhất: mỗi run SDFT 7B mất khoảng 
 |---|---|---|---|
 | LoRA/QLoRA thay full FT | Phần cứng | SFT quên ít hơn paper; SDFT có thể học ít hơn | So số prior-tasks của SFT với Table 5 |
 | EMA trên A, B riêng | Dùng 2 adapter LoRA | Teacher hơi khác EMA thật | Ghi chú; có thể thử teacher cố định (α=0) để so |
-| 4-bit NF4 (nếu T4) | VRAM 16 GB | Base accuracy lệch nhẹ | Đo Base 4-bit vs bf16 trên 1.5B |
+| Train 4-bit NF4, đánh giá fp16 | VRAM 16 GB; 4-bit sinh token chậm | Adapter train trên base 4-bit, áp lên base fp16 | Ghi rõ; nếu kịp, đánh giá Base 4-bit trên 1 GPU để so |
+| Tập con 14% dữ liệu train (352 / 528) | Pilot đo 50,6 / 33,4 s/mẫu trên T4 | Ít bước tối ưu, SFT có thể quên ít hơn paper | §4.5b |
 | max gen 1024 thay 2048 | Theo code chính thức, tiết kiệm thời gian | Gần như không (p90 demo ~480 token) | Tỉ lệ response bị cắt, log trên W&B |
 | Không sweep đầy đủ | Ngân sách | Số của nhóm có thể thấp hơn "best-of-sweep" của paper | Ghi rõ cấu hình đã chọn |
 | 1 seed thay 3 | Ngân sách | Không có khoảng tin cậy | Nếu kịp: 3 seed cho E1 |

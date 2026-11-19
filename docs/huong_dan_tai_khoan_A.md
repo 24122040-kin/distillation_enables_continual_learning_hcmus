@@ -3,6 +3,7 @@
 > Viết ngày 19/11/2026. Deadline nộp bài: **23:59 thứ Bảy 21/11**.
 > Tài khoản A chạy thí nghiệm quan trọng nhất của deck: **SDFT trên Qwen2.5-7B, task Science Q&A (E1)**.
 > Lịch tổng của cả nhóm nằm trong `docs/reproduction_plan.md` §5.
+> **Pilot đã chạy (19/11 22:12): dùng `N_SCI=352`.**
 
 ## Tóm tắt việc của A
 
@@ -10,7 +11,7 @@
 |---|---|---|---|
 | **Tối 19/11** | Bước 1–3: tạo notebook, chạy `pilot`, gửi số `N_SCI` / `N_TOOL` cho nhóm | ~1 giờ | Tương tác (ngồi xem) |
 | **Tối 19/11** | Bước 4: chạy `e1_sdft` qua đêm | ~10 giờ | Chạy nền, đóng trình duyệt được |
-| **Sáng 20/11** | Bước 6: chạy `eval_sdft e1` | ~2–3 giờ | Chạy nền |
+| **Sáng 20/11** | Bước 6: chạy `eval_sdft e1` | ~1–2 giờ | Chạy nền |
 | **Trưa 20/11** | Bước 7: gửi kết quả cho người làm slide | 5 phút | |
 
 Quota GPU cần cho A: khoảng **14 giờ** trong tuần này.
@@ -98,7 +99,7 @@ wandb.login(key=os.environ["WANDB_API_KEY"], verify=True)
 1. **Xóa ô 3** (pilot). Nếu để lại, lần chạy nền sẽ chạy lại pilot và mất thêm 40 phút.
 2. Sửa ô 4, thay `____` bằng số `N_SCI` của bước 3, ví dụ:
    ```python
-   !N_SCI=1376 bash scripts/kaggle_jobs.sh e1_sdft
+   !N_SCI=352 bash scripts/kaggle_jobs.sh e1_sdft
    ```
 3. Bấm **Save Version** (góc trên bên phải) → chọn **Save & Run All (Commit)** → **Save**.
    - Kaggle sẽ chạy lại toàn bộ notebook từ ô 1 trên máy riêng. **Đóng trình duyệt cũng không sao.**
@@ -149,14 +150,13 @@ Thêm **ô 4**, dùng đúng số `N_SCI` của đêm qua:
 
 ```python
 # Nếu 6.1 báo train CHƯA xong, bỏ dấu # ở dòng dưới để train tiếp trước:
-# !N_SCI=1376 bash scripts/kaggle_jobs.sh e1_sdft
-!N_SCI=1376 bash scripts/kaggle_jobs.sh eval_sdft e1
+# !N_SCI=352 bash scripts/kaggle_jobs.sh e1_sdft
+!N_SCI=352 bash scripts/kaggle_jobs.sh eval_sdft e1
 ```
 
 Bấm **Save Version → Save & Run All**, rồi tắt phiên tương tác. Thời gian chạy:
-- đánh giá trên tập val để chọn epoch: ~20 phút;
-- tập test 507 câu: ~30 phút;
-- 6 benchmark khả năng cũ (lm-eval, 25% số câu): ~1–2 giờ.
+- đánh giá chạy **fp16 trên cả 2 GPU** (script tự đặt, không cần sửa ô 1), nhanh hơn nhiều so với 4-bit;
+- tổng cộng val (chọn epoch) + test 507 câu + 6 benchmark khả năng cũ: ước tính ~1–2 giờ. Số đo thật sẽ có sau job `base` của B tối nay.
 
 Trong log sẽ có dòng `best checkpoint: .../epochX (val acc ...)`.
 

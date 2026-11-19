@@ -40,7 +40,7 @@ short() { basename "$1"; }
 train_sdft() {  # model task n extra...
   local m=$1 t=$2 n=$3; shift 3
   python src/sdft_trainer.py --model_name "$m" --task "$t" --max_train "$n" --batch_size "$BS" \
-    --gen_batch_size 8 --seed "$SEED" --max_hours 11 --output_dir "$CK" "${Q[@]}" "$@"
+    --gen_batch_size "${GEN_BS:-8}" --seed "$SEED" --max_hours 11 --output_dir "$CK" "${Q[@]}" "$@"
 }
 train_sft() {   # model task n
   python src/sft_baseline.py --model_name "$1" --task "$2" --max_train "$3" --batch_size "$BS" \

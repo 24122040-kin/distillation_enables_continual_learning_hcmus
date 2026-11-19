@@ -1,207 +1,193 @@
-"""Evaluation script for New Task Accuracy, Prior Capabilities, and Paper Deviation.
+"""New-task evaluation (greedy) and comparison with the paper's Table 5.
 
-Computes greedy (temperature=0) accuracy on the target task, optionally invokes
-EleutherAI lm-evaluation-harness on prior capability benchmarks, and reports
-Absolute Difference (Delta) and Relative Error (%) vs. Table 5 of the paper.
+Usage examples::
+
+    # base model on the official test split
+    python src/evaluate.py --model_name Qwen/Qwen2.5-7B-Instruct --task science --method base
+
+    # a trained LoRA checkpoint, validation split (for checkpoint selection)
+    python src/evaluate.py --checkpoint_dir checkpoints/sdft_science_s42/epoch2 --method sdft --split val
+
+    # teacher accuracy: the model with the demonstration in context (Section 3.2 / scaling analysis)
+    python src/evaluate.py --task science --split val --with_demo --method base
 """
 
 import argparse
+import json
 import os
-import re
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
 import torch
-from peft import PeftModel
 from tqdm import tqdm
-from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 import wandb
 
+from answer_parsing import score
+from common import chat_ids, generate_batch, load_model_and_tokenizer, set_seed
 from data_loader import get_dataset
+from prompts import student_context, teacher_context
 
-
+# Table 5 of the paper (Qwen2.5-7B-Instruct): new-task accuracy and average prior-task score.
 PAPER_TABLE5 = {
-    "science_qa": {"base": 32.1, "sft": 66.2, "sdft": 70.2},
-    "tool_use": {"base": 42.9, "sft": 63.2, "sdft": 70.6},
+    "science": {
+        "base": {"new": 32.1, "prior_avg": 65.5},
+        "sft": {"new": 66.2, "prior_avg": 53.4},
+        "sdft": {"new": 70.2, "prior_avg": 64.5},
+    },
+    "tool_use": {
+        "base": {"new": 42.9, "prior_avg": 65.5},
+        "sft": {"new": 63.2, "prior_avg": 56.0},
+        "sdft": {"new": 70.6, "prior_avg": 65.4},
+    },
 }
 
 
-def extract_choice(text: str) -> str:
-    """Extract multiple-choice option letter (A-D) from model output.
-
-    Parameters
-    ----------
-    text : str
-        Generated model response.
-
-    Returns
-    -------
-    str
-        Extracted uppercase option letter, or empty string if not found.
-    """
-    match = re.search(r"(?:Final Answer:\s*|Answer:\s*|\b)([A-D])\b", text.strip(), re.IGNORECASE)
-    return match.group(1).upper() if match else ""
-
-
 def evaluate_new_task(
-    model_name: str,
-    checkpoint_dir: Optional[str],
+    model,
+    tokenizer,
     task: str,
-    seed: int = 42,
-    max_test: int = 100,
-    max_new_tokens: int = 384,
-    quant_bits: int = 4,
-) -> float:
-    """Evaluate a model or LoRA checkpoint on the held-out test set using greedy decoding.
+    examples: List[Dict],
+    max_new_tokens: int = 1024,
+    batch_size: int = 16,
+    with_demo: bool = False,
+) -> Dict[str, object]:
+    """Greedy-decode every example and score it.
 
     Parameters
     ----------
-    model_name : str
-        Base Hugging Face model ID.
-    checkpoint_dir : str or None
-        Path to saved PEFT LoRA checkpoint, or None to evaluate the Base model.
+    model, tokenizer
+        Model (base or PEFT) and tokenizer.
     task : str
-        Task name ('science_qa' or 'tool_use').
-    seed : int
-        Random seed matching the dataset split.
-    max_test : int
-        Maximum number of test examples to evaluate.
+        ``"science"`` or ``"tool_use"``.
+    examples : list of dict
+        Examples from :func:`data_loader.get_dataset`.
     max_new_tokens : int
-        Maximum generation length.
-
-    Returns
-    -------
-    float
-        Accuracy percentage in [0.0, 100.0].
-    """
-    if quant_bits == 4:
-        bnb_config = BitsAndBytesConfig(
-            load_in_4bit=True,
-            bnb_4bit_quant_type="nf4",
-            bnb_4bit_compute_dtype=torch.float16,
-            bnb_4bit_use_double_quant=True,
-        )
-    elif quant_bits == 8:
-        bnb_config = BitsAndBytesConfig(load_in_8bit=True)
-    else:
-        bnb_config = None
-
-    tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
-    if tokenizer.pad_token is None:
-        tokenizer.pad_token = tokenizer.eos_token
-
-    model_kwargs = {"device_map": "auto", "trust_remote_code": True}
-    if bnb_config is not None:
-        model_kwargs["quantization_config"] = bnb_config
-    else:
-        model_kwargs["torch_dtype"] = torch.float16
-
-    model = AutoModelForCausalLM.from_pretrained(model_name, **model_kwargs)
-    if checkpoint_dir:
-        model = PeftModel.from_pretrained(model, checkpoint_dir)
-    model.eval()
-
-    _, _, test_data = get_dataset(task, seed=seed, max_test=max_test)
-    correct = 0
-
-    for ex in tqdm(test_data, desc=f"Evaluating {checkpoint_dir or 'Base'} on {task}"):
-        prompt_str = tokenizer.apply_chat_template(
-            [{"role": "user", "content": ex["prompt"]}],
-            tokenize=False,
-            add_generation_prompt=True,
-        )
-        inputs = tokenizer(prompt_str, return_tensors="pt", truncation=True, max_length=1024).to(model.device)
-        with torch.no_grad():
-            out = model.generate(
-                **inputs,
-                max_new_tokens=max_new_tokens,
-                do_sample=False,
-                pad_token_id=tokenizer.pad_token_id,
-            )
-        pred_text = tokenizer.decode(out[0, inputs["input_ids"].shape[1] :], skip_special_tokens=True)
-
-        if task == "science_qa":
-            pred = extract_choice(pred_text)
-            gold = ex["answer"].strip().upper()[:1]
-            if pred == gold:
-                correct += 1
-        else:
-            # Normalized substring / API call match for Tool Use
-            gold_norm = re.sub(r"\s+", "", ex["answer"].lower())
-            pred_norm = re.sub(r"\s+", "", pred_text.lower())
-            if gold_norm and gold_norm in pred_norm:
-                correct += 1
-
-    acc = 100.0 * correct / max(1, len(test_data))
-    return acc
-
-
-def compare_with_paper(acc: float, task: str, method: str) -> Dict[str, float]:
-    """Compute Absolute Difference and Relative Error against Table 5 of the paper.
-
-    Parameters
-    ----------
-    acc : float
-        Reproduced accuracy percentage.
-    task : str
-        Task name ('science_qa' or 'tool_use').
-    method : str
-        One of 'base', 'sft', 'sdft'.
+        Generation budget (paper: 2048, official code: 1024).
+    batch_size : int
+        Number of prompts decoded together.
+    with_demo : bool
+        Use the teacher context (requires demonstrations, i.e. the val split).
 
     Returns
     -------
     dict
-        Metrics dictionary with paper_acc, delta, rel_error_pct, and fidelity_pct.
+        ``metrics`` (mean of every score key, in %, plus truncation rate and
+        mean response length) and ``records`` (per-example outputs).
     """
-    paper_acc = PAPER_TABLE5[task][method]
-    delta = acc - paper_acc
-    rel_err = abs(delta) / paper_acc * 100.0
-    fidelity = max(0.0, 100.0 - rel_err)
-    return {
-        "paper_acc": paper_acc,
-        "reproduced_acc": acc,
-        "delta": delta,
-        "rel_error_pct": rel_err,
-        "fidelity_pct": fidelity,
-    }
+    records = []
+    for start in tqdm(range(0, len(examples), batch_size), desc=f"eval {task}"):
+        chunk = examples[start:start + batch_size]
+        prompts = []
+        for ex in chunk:
+            if with_demo:
+                system, user = teacher_context(ex["system"], ex["question"], ex["demonstration"])
+            else:
+                system, user = student_context(ex["system"], ex["question"])
+            prompts.append(chat_ids(tokenizer, system, user))
+        outs = generate_batch(model, tokenizer, prompts, max_new_tokens, do_sample=False)
+        for ex, out in zip(chunk, outs):
+            text = tokenizer.decode(out["ids"], skip_special_tokens=True)
+            rec = {"id": ex["id"], "response": text, "n_tokens": len(out["ids"]), "truncated": out["truncated"]}
+            rec.update(score(task, text, ex["answer"]))
+            records.append(rec)
+
+    keys = [k for k in records[0] if k.startswith("acc")]
+    metrics = {k: 100.0 * sum(r[k] for r in records) / len(records) for k in keys}
+    metrics["truncated_pct"] = 100.0 * sum(r["truncated"] for r in records) / len(records)
+    metrics["mean_response_tokens"] = sum(r["n_tokens"] for r in records) / len(records)
+    metrics["n"] = len(records)
+    return {"metrics": metrics, "records": records}
+
+
+def compare_with_paper(acc: float, task: str, method: str) -> Optional[Dict[str, float]]:
+    """Absolute and relative deviation from Table 5 of the paper.
+
+    Parameters
+    ----------
+    acc : float
+        Reproduced accuracy (%).
+    task : str
+        Task name.
+    method : str
+        ``"base"``, ``"sft"`` or ``"sdft"``.
+
+    Returns
+    -------
+    dict or None
+        ``paper``, ``ours``, ``delta_pp`` and ``rel_dev_pct``; ``None`` if the
+        paper has no matching number.
+    """
+    ref = PAPER_TABLE5.get(task, {}).get(method)
+    if ref is None:
+        return None
+    paper = ref["new"]
+    return {"paper": paper, "ours": acc, "delta_pp": acc - paper, "rel_dev_pct": 100.0 * (acc - paper) / paper}
 
 
 def main() -> None:
-    """CLI entrypoint for evaluating a model checkpoint and logging comparison to W&B."""
-    parser = argparse.ArgumentParser(description="Evaluate SDFT/SFT/Base and compare with paper")
-    parser.add_argument("--model_name", type=str, default="Qwen/Qwen2.5-3B-Instruct")
-    parser.add_argument("--checkpoint_dir", type=str, default=None)
-    parser.add_argument("--method", type=str, default="base", choices=["base", "sft", "sdft"])
-    parser.add_argument("--task", type=str, default="science_qa", choices=["science_qa", "tool_use"])
-    parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--max_test", type=int, default=100)
-    parser.add_argument("--quant_bits", type=int, default=4, choices=[4, 8, 16])
-    args = parser.parse_args()
+    """CLI entry point: evaluate one model/checkpoint on one split and log to W&B."""
+    p = argparse.ArgumentParser(description="Evaluate Base/SFT/SDFT on the new task")
+    p.add_argument("--model_name", default="Qwen/Qwen2.5-7B-Instruct")
+    p.add_argument("--checkpoint_dir", default=None, help="LoRA adapter directory; omit for the base model")
+    p.add_argument("--method", default="base", choices=["base", "sft", "sdft"])
+    p.add_argument("--task", default="science", choices=["science", "tool_use"])
+    p.add_argument("--split", default="test", choices=["val", "test"])
+    p.add_argument("--with_demo", action="store_true", help="Evaluate the demonstration-conditioned teacher")
+    p.add_argument("--max_new_tokens", type=int, default=1024)
+    p.add_argument("--batch_size", type=int, default=16)
+    p.add_argument("--quant_bits", type=int, default=16, choices=[4, 8, 16])
+    p.add_argument("--max_examples", type=int, default=None, help="Smoke tests only")
+    p.add_argument("--data_seed", type=int, default=0)
+    p.add_argument("--data_source", default="auto", choices=["auto", "hf", "github"])
+    p.add_argument("--hf_dataset", default=None)
+    p.add_argument("--seed", type=int, default=42, help="Seed of the evaluated training run (for naming)")
+    p.add_argument("--output_dir", default="./eval_results")
+    p.add_argument("--run_name", default=None)
+    args = p.parse_args()
 
+    if args.with_demo and args.split != "val":
+        p.error("--with_demo needs --split val (the test split has no demonstrations).")
+    set_seed(args.seed)
+    _, val, test = get_dataset(
+        args.task, data_seed=args.data_seed, source=args.data_source, hf_dataset=args.hf_dataset
+    )
+    examples = val if args.split == "val" else test
+    if args.max_examples:
+        examples = examples[: args.max_examples]
+
+    model, tokenizer = load_model_and_tokenizer(args.model_name, args.quant_bits, for_training=False)
+    if args.checkpoint_dir:
+        from peft import PeftModel
+
+        model = PeftModel.from_pretrained(model, args.checkpoint_dir)
+    model.eval()
+
+    tag = "teacher" if args.with_demo else args.method
+    name = args.run_name or f"eval-{tag}-{args.model_name.split('/')[-1]}-{args.task}-{args.split}-s{args.seed}"
     wandb.init(
         project=os.environ.get("WANDB_PROJECT", "sdft-continual-learning"),
-        name=f"eval-{args.method}-{args.task}-s{args.seed}",
-        config=vars(args),
-        tags=["evaluation", args.method, args.task],
+        name=name,
+        config={**vars(args), "gpu": torch.cuda.get_device_name(0) if torch.cuda.is_available() else "cpu"},
+        tags=["lab1", "eval-newtask", tag, args.task, args.split],
     )
-
-    acc = evaluate_new_task(
-        model_name=args.model_name,
-        checkpoint_dir=args.checkpoint_dir,
-        task=args.task,
-        seed=args.seed,
-        max_test=args.max_test,
-        quant_bits=args.quant_bits,
+    result = evaluate_new_task(
+        model, tokenizer, args.task, examples, args.max_new_tokens, args.batch_size, args.with_demo
     )
-    metrics = compare_with_paper(acc, args.task, args.method)
-    wandb.log({f"eval/{k}": v for k, v in metrics.items()})
+    metrics = result["metrics"]
+    log = {f"eval/{k}": v for k, v in metrics.items()}
+    cmp = compare_with_paper(metrics["acc"], args.task, args.method) if args.split == "test" and not args.with_demo else None
+    if cmp:
+        log.update({f"paper_cmp/{k}": v for k, v in cmp.items()})
+    wandb.log(log)
+    wandb.log({"eval/samples": wandb.Table(
+        columns=["id", "acc", "n_tokens", "truncated", "response"],
+        data=[[r["id"], r["acc"], r["n_tokens"], r["truncated"], r["response"]] for r in result["records"]],
+    )})
 
-    print("\n=== Reproduction Comparison vs. Paper (Table 5) ===")
-    print(f"Task: {args.task} | Method: {args.method}")
-    print(f"Paper Accuracy     : {metrics['paper_acc']:.2f}%")
-    print(f"Reproduced Accuracy: {metrics['reproduced_acc']:.2f}%")
-    print(f"Delta (Reprod-Pap) : {metrics['delta']:+.2f} pp")
-    print(f"Relative Error     : {metrics['rel_error_pct']:.2f}%")
-    print(f"Fidelity Score     : {metrics['fidelity_pct']:.2f}%")
+    os.makedirs(args.output_dir, exist_ok=True)
+    with open(os.path.join(args.output_dir, f"{name}.json"), "w") as f:
+        json.dump({"args": vars(args), "metrics": metrics, "paper_cmp": cmp, "records": result["records"]}, f, indent=2)
+
+    print(json.dumps({"metrics": metrics, "paper_cmp": cmp}, indent=2))
     wandb.finish()
 
 

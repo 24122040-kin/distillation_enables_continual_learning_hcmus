@@ -1,331 +1,429 @@
 """Independent re-implementation of Self-Distillation Fine-Tuning (SDFT).
 
-Implements Algorithm 1, Section 3, and Appendix A.1 from:
-'Self-Distillation Enables Continual Learning' (Shenfeld et al., 2026)
-adapted for free-tier GPUs (16-32 GB VRAM) using 4-bit QLoRA and dual PEFT adapters
-('student' and 'teacher' EMA).
+Implements Algorithm 1, Section 3 and Appendix A.1 of Shenfeld et al. (2026),
+"Self-Distillation Enables Continual Learning", from the paper's description.
+
+Design (and deviations, see docs/reproduction_plan.md §7):
+
+* Student pi_theta and teacher pi_phi share one frozen base model and differ
+  only in their LoRA adapters ("default" = student, "teacher" = EMA copy).
+  The EMA is applied to the LoRA factors A and B separately, which is only an
+  approximation of an EMA over the weight update B @ A.
+* One on-policy rollout per prompt (Appendix B.1); rollouts of ``gen_batch_size``
+  prompts are generated together to amortise decoding cost.
+* Loss: full analytic per-token KL over the vocabulary (Appendix A.1). Forward
+  KL(teacher || student) is the default because the paper reports it works best
+  in practice; reverse KL (Eq. 1) is available for the theory/practice analysis.
+* The first ``artifact_mask_tokens`` response tokens are excluded from the loss
+  (Section 5, "Learned Artifacts").
+* Checkpoint/resume plus a wall-clock budget (``--max_hours``) so a long run can
+  be split across several 12-hour Kaggle sessions.
 """
 
 import argparse
+import json
+import math
 import os
 import random
 import time
+import uuid
+from typing import Dict, List, Optional
 
 import numpy as np
 import torch
 import torch.nn.functional as F
-from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
-from tqdm import tqdm
-from transformers import (
-    AutoModelForCausalLM,
-    AutoTokenizer,
-    BitsAndBytesConfig,
-    get_cosine_schedule_with_warmup,
-)
+from peft import LoraConfig, get_peft_model
+from transformers import get_cosine_schedule_with_warmup
 import wandb
 
+from common import chat_ids, generate_batch, load_model_and_tokenizer, set_seed
 from data_loader import get_dataset
+from prompts import student_context, teacher_context
+
+LORA_TARGETS = ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
 
 
-def set_seed(seed: int) -> None:
-    """Fix all random seeds for reproducibility.
-
-    Parameters
-    ----------
-    seed : int
-        Random seed value.
-    """
-    random.seed(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed_all(seed)
-
-
-def build_teacher_prompt(question: str, demonstration: str) -> str:
-    """Construct the demonstration-conditioned teacher prompt from Section 3.
-
-    Parameters
-    ----------
-    question : str
-        Task prompt x.
-    demonstration : str
-        Expert demonstration c.
-
-    Returns
-    -------
-    str
-        Formatted teacher context Ctx_T(x, c).
-    """
-    return (
-        f"{question}\n"
-        "This is an example for a response to the question:\n"
-        f"{demonstration}\n"
-        "Now answer with a response of your own, including the thinking process:"
-    )
-
-
+# --------------------------------------------------------------------------- #
+# Core SDFT pieces
+# --------------------------------------------------------------------------- #
 def compute_analytic_kl_loss(
     student_logits: torch.Tensor,
     teacher_logits: torch.Tensor,
     mask: torch.Tensor,
     kl_mode: str = "forward",
 ) -> torch.Tensor:
-    """Compute the full analytic per-token KL divergence over the vocabulary (Appendix A.1).
+    """Full analytic per-token KL over the vocabulary, averaged over unmasked tokens.
 
     Parameters
     ----------
     student_logits : torch.Tensor
-        Logits from the student policy, shape (B, T, V).
+        Student logits at the response positions, shape (T, V); carries gradient.
     teacher_logits : torch.Tensor
-        Logits from the teacher policy (detached), shape (B, T, V).
+        Teacher logits at the same positions, shape (T, V); detached.
     mask : torch.Tensor
-        Binary mask over generated response tokens, shape (B, T).
+        Float mask of shape (T,), 1 for tokens that enter the loss.
     kl_mode : str
-        'forward' for KL(teacher || student) as used in practice, or
-        'reverse' for KL(student || teacher) as in Eq. 1.
+        ``"forward"``: sum_v p_T log(p_T / p_S) (used for the paper's results);
+        ``"reverse"``: sum_v p_S log(p_S / p_T) (Eq. 1 / Eq. 2).
 
     Returns
     -------
     torch.Tensor
-        Scalar masked mean KL loss.
+        Scalar loss.
     """
-    student_log_probs = F.log_softmax(student_logits, dim=-1)
-    teacher_log_probs = F.log_softmax(teacher_logits, dim=-1)
-
+    s_logp = F.log_softmax(student_logits.float(), dim=-1)
+    t_logp = F.log_softmax(teacher_logits.float(), dim=-1)
     if kl_mode == "forward":
-        teacher_probs = teacher_log_probs.exp()
-        token_kl = (teacher_probs * (teacher_log_probs - student_log_probs)).sum(dim=-1)
+        token_kl = (t_logp.exp() * (t_logp - s_logp)).sum(-1)
     elif kl_mode == "reverse":
-        student_probs = student_log_probs.exp()
-        token_kl = (student_probs * (student_log_probs - teacher_log_probs)).sum(dim=-1)
+        token_kl = (s_logp.exp() * (s_logp - t_logp)).sum(-1)
     else:
         raise ValueError(f"Unsupported kl_mode: {kl_mode}")
-
-    denom = mask.sum().clamp(min=1.0)
-    return (token_kl * mask).sum() / denom
+    return (token_kl * mask).sum() / mask.sum().clamp(min=1.0)
 
 
 @torch.no_grad()
 def update_ema_adapter(model: torch.nn.Module, alpha: float) -> None:
-    """Update the 'teacher' LoRA adapter as an EMA of the 'student' adapter (Algorithm 1, line 19).
+    """Teacher update phi <- alpha * theta + (1 - alpha) * phi (Algorithm 1, line 19).
 
     Parameters
     ----------
     model : torch.nn.Module
-        PEFT model containing both 'default' (student) and 'teacher' adapters.
+        PEFT model holding the ``default`` (student) and ``teacher`` adapters.
     alpha : float
-        EMA decay rate: phi <- alpha * theta + (1 - alpha) * phi.
+        EMA rate. 0 keeps the teacher frozen at its initial value (= base model,
+        because LoRA B is initialised to zero); 1 copies the student.
     """
     if alpha <= 0.0:
         return
     params = dict(model.named_parameters())
-    for name, student_param in params.items():
+    for name, student in params.items():
         if ".default." in name:
-            teacher_name = name.replace(".default.", ".teacher.")
-            if teacher_name in params:
-                teacher_param = params[teacher_name]
-                if alpha >= 1.0:
-                    teacher_param.data.copy_(student_param.data)
-                else:
-                    teacher_param.data.mul_(1.0 - alpha).add_(student_param.data, alpha=alpha)
+            teacher = params.get(name.replace(".default.", ".teacher."))
+            if teacher is not None:
+                teacher.data.mul_(1.0 - alpha).add_(student.data.to(teacher.dtype), alpha=alpha)
 
 
-def format_chat(tokenizer: AutoTokenizer, text: str) -> str:
-    """Apply the model's chat template to a user prompt.
+def _set_active(model, adapter: str, student_params: List[torch.nn.Parameter]) -> None:
+    """Activate an adapter while keeping only the student's parameters trainable.
 
     Parameters
     ----------
-    tokenizer : AutoTokenizer
-        Model tokenizer.
-    text : str
-        Prompt content.
+    model : PeftModel
+        Model with both adapters.
+    adapter : str
+        ``"default"`` or ``"teacher"``.
+    student_params : list of Parameter
+        Parameters owned by the optimizer.
+    """
+    model.set_adapter(adapter)
+    for n, p in model.named_parameters():
+        p.requires_grad_(False)
+    for p in student_params:
+        p.requires_grad_(True)
+
+
+def sdft_example_loss(
+    model,
+    tokenizer,
+    example: Dict,
+    student_prompt: List[int],
+    response: List[int],
+    student_params: List[torch.nn.Parameter],
+    args: argparse.Namespace,
+) -> Optional[torch.Tensor]:
+    """KL loss of one on-policy rollout (Algorithm 1, lines 8-12 and 16).
+
+    Parameters
+    ----------
+    model, tokenizer
+        PEFT model and tokenizer.
+    example : dict
+        Training example with ``system``, ``question`` and ``demonstration``.
+    student_prompt : list of int
+        Token ids of Ctx_S(x).
+    response : list of int
+        Rollout y sampled from the student.
+    student_params : list of Parameter
+        Trainable student parameters.
+    args : argparse.Namespace
+        Needs ``artifact_mask_tokens`` and ``kl_mode``.
 
     Returns
     -------
-    str
-        Chat-formatted string ready for tokenization.
+    torch.Tensor or None
+        Scalar loss with gradient, or ``None`` if the rollout is too short to train on.
     """
-    messages = [{"role": "user", "content": text}]
-    return tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+    n = len(response)
+    if n <= args.artifact_mask_tokens:
+        return None
+    device = next(model.parameters()).device
+    resp = torch.tensor(response, device=device)
+
+    # Teacher log-probs on the student's own trajectory, conditioned on the demonstration.
+    t_prompt = torch.tensor(
+        chat_ids(tokenizer, *teacher_context(example["system"], example["question"], example["demonstration"])),
+        device=device,
+    )
+    model.eval()
+    _set_active(model, "teacher", student_params)
+    with torch.no_grad():
+        t_logits = model(input_ids=torch.cat([t_prompt, resp])[None]).logits[0]
+    t_logits = t_logits[len(t_prompt) - 1: len(t_prompt) - 1 + n].detach()
+
+    # Student log-probs on the same trajectory, conditioned on the task prompt only.
+    model.train()
+    _set_active(model, "default", student_params)
+    s_prompt = torch.tensor(student_prompt, device=device)
+    s_logits = model(input_ids=torch.cat([s_prompt, resp])[None]).logits[0]
+    s_logits = s_logits[len(s_prompt) - 1: len(s_prompt) - 1 + n]
+
+    mask = torch.ones(n, device=device)
+    mask[: args.artifact_mask_tokens] = 0.0
+    return compute_analytic_kl_loss(s_logits, t_logits, mask, args.kl_mode)
 
 
+# --------------------------------------------------------------------------- #
+# Checkpointing
+# --------------------------------------------------------------------------- #
+def _adapter_state(model) -> Dict[str, torch.Tensor]:
+    """Return every LoRA tensor (student and teacher) keyed by parameter name."""
+    return {n: p.detach().cpu().clone() for n, p in model.named_parameters() if "lora_" in n}
+
+
+def save_resume_checkpoint(path: str, model, optimizer, scheduler, state: Dict) -> None:
+    """Save everything needed to continue training bit-for-bit in a new session.
+
+    Parameters
+    ----------
+    path : str
+        Directory to write.
+    model, optimizer, scheduler
+        Training objects.
+    state : dict
+        Loop counters, W&B run id, etc.
+    """
+    os.makedirs(path, exist_ok=True)
+    tmp = os.path.join(path, "ckpt.pt.tmp")
+    torch.save(
+        {
+            "adapters": _adapter_state(model),
+            "optimizer": optimizer.state_dict(),
+            "scheduler": scheduler.state_dict(),
+            "rng": {
+                "python": random.getstate(),
+                "numpy": np.random.get_state(),
+                "torch": torch.get_rng_state(),
+                "cuda": torch.cuda.get_rng_state_all() if torch.cuda.is_available() else None,
+            },
+        },
+        tmp,
+    )
+    os.replace(tmp, os.path.join(path, "ckpt.pt"))
+    with open(os.path.join(path, "state.json"), "w") as f:
+        json.dump(state, f, indent=2)
+
+
+def load_resume_checkpoint(path: str, model, optimizer, scheduler) -> Dict:
+    """Restore a checkpoint written by :func:`save_resume_checkpoint`.
+
+    Parameters
+    ----------
+    path : str
+        Checkpoint directory.
+    model, optimizer, scheduler
+        Freshly built training objects (same configuration as the saved run).
+
+    Returns
+    -------
+    dict
+        The saved loop state.
+    """
+    ckpt = torch.load(os.path.join(path, "ckpt.pt"), map_location="cpu", weights_only=False)
+    params = dict(model.named_parameters())
+    with torch.no_grad():
+        for n, t in ckpt["adapters"].items():
+            params[n].data.copy_(t.to(params[n].device, params[n].dtype))
+    optimizer.load_state_dict(ckpt["optimizer"])
+    scheduler.load_state_dict(ckpt["scheduler"])
+    random.setstate(ckpt["rng"]["python"])
+    np.random.set_state(ckpt["rng"]["numpy"])
+    torch.set_rng_state(ckpt["rng"]["torch"])
+    if ckpt["rng"]["cuda"] is not None and torch.cuda.is_available():
+        torch.cuda.set_rng_state_all(ckpt["rng"]["cuda"])
+    with open(os.path.join(path, "state.json")) as f:
+        return json.load(f)
+
+
+def run_dir_name(args: argparse.Namespace) -> str:
+    """Deterministic output directory name for a configuration."""
+    model = args.model_name.split("/")[-1]
+    n = args.max_train if args.max_train else "all"
+    return f"sdft_{args.task}_{model}_n{n}_ema{args.ema_alpha}_{args.kl_mode}_s{args.seed}"
+
+
+# --------------------------------------------------------------------------- #
+# Training loop
+# --------------------------------------------------------------------------- #
 def train_sdft(args: argparse.Namespace) -> None:
-    """Run Self-Distillation Fine-Tuning (SDFT) and log metrics to Weights & Biases.
+    """Run SDFT (Algorithm 1) with checkpoint/resume and W&B logging.
 
     Parameters
     ----------
     args : argparse.Namespace
-        Training configuration arguments.
+        Parsed command-line configuration.
     """
+    if args.batch_size % args.gen_batch_size:
+        raise ValueError("--batch_size must be a multiple of --gen_batch_size")
     set_seed(args.seed)
+    out_dir = os.path.join(args.output_dir, run_dir_name(args))
+    resume_dir = os.path.join(out_dir, "resume")
 
+    train, _, _ = get_dataset(
+        args.task, max_train=args.max_train, data_seed=args.data_seed,
+        source=args.data_source, hf_dataset=args.hf_dataset,
+    )
+    model, tokenizer = load_model_and_tokenizer(args.model_name, args.quant_bits, for_training=True)
+    lora = LoraConfig(
+        r=args.lora_r, lora_alpha=args.lora_alpha, lora_dropout=0.05,
+        bias="none", task_type="CAUSAL_LM", target_modules=LORA_TARGETS,
+    )
+    model = get_peft_model(model, lora, adapter_name="default")
+    model.add_adapter("teacher", lora)
+    student_params = [p for n, p in model.named_parameters() if ".default." in n and "lora_" in n]
+    update_ema_adapter(model, alpha=1.0)  # phi = theta (Algorithm 1, line 1)
+    _set_active(model, "default", student_params)
+
+    steps_per_epoch = math.ceil(len(train) / args.batch_size)
+    total_steps = steps_per_epoch * args.epochs
+    optimizer = torch.optim.AdamW(student_params, lr=args.lr, weight_decay=0.0)
+    scheduler = get_cosine_schedule_with_warmup(optimizer, args.warmup_steps, total_steps)
+
+    state = {"epoch": 0, "step_in_epoch": 0, "global_step": 0, "wandb_id": None, "elapsed_h": 0.0}
+    if os.path.exists(os.path.join(resume_dir, "ckpt.pt")):
+        state = load_resume_checkpoint(resume_dir, model, optimizer, scheduler)
+        print(f"Resumed from {resume_dir} at global step {state['global_step']}")
+
+    wandb_id = state["wandb_id"] or uuid.uuid4().hex[:8]
+    state["wandb_id"] = wandb_id
     wandb.init(
         project=os.environ.get("WANDB_PROJECT", "sdft-continual-learning"),
-        name=f"sdft-{args.task}-ema{args.ema_alpha}-{args.kl_mode}-s{args.seed}",
-        config=vars(args),
-        tags=["reproduction", "sdft", args.task],
+        id=wandb_id, resume="allow", name=args.run_name or run_dir_name(args),
+        config={**vars(args), "n_train": len(train), "total_steps": total_steps,
+                "gpu": torch.cuda.get_device_name(0) if torch.cuda.is_available() else "cpu"},
+        tags=["lab1", "sdft", args.task, args.model_name.split("/")[-1]] + args.tags,
     )
 
-    if args.quant_bits == 4:
-        bnb_config = BitsAndBytesConfig(
-            load_in_4bit=True,
-            bnb_4bit_quant_type="nf4",
-            bnb_4bit_compute_dtype=torch.float16,
-            bnb_4bit_use_double_quant=True,
-        )
-    elif args.quant_bits == 8:
-        bnb_config = BitsAndBytesConfig(load_in_8bit=True)
-    else:
-        bnb_config = None
-
-    tokenizer = AutoTokenizer.from_pretrained(args.model_name, trust_remote_code=True)
-    if tokenizer.pad_token is None:
-        tokenizer.pad_token = tokenizer.eos_token
-
-    model_kwargs = {"device_map": "auto", "trust_remote_code": True}
-    if bnb_config is not None:
-        model_kwargs["quantization_config"] = bnb_config
-    else:
-        model_kwargs["torch_dtype"] = torch.float16
-
-    base_model = AutoModelForCausalLM.from_pretrained(args.model_name, **model_kwargs)
-    if bnb_config is not None:
-        base_model = prepare_model_for_kbit_training(base_model)
-
-    lora_cfg = LoraConfig(
-        r=args.lora_r,
-        lora_alpha=args.lora_alpha,
-        lora_dropout=0.05,
-        bias="none",
-        task_type="CAUSAL_LM",
-        target_modules=[
-            "q_proj", "k_proj", "v_proj", "o_proj",
-            "gate_proj", "up_proj", "down_proj",
-        ],
-    )
-
-    model = get_peft_model(base_model, lora_cfg, adapter_name="default")
-    model.add_adapter("teacher", lora_cfg)
-    update_ema_adapter(model, alpha=1.0)  # Initialize phi = theta (Algorithm 1, line 1)
-    model.set_adapter("default")
-
-    train_data, _, _ = get_dataset(args.task, seed=args.seed, max_train=args.max_train)
-
-    trainable_params = [p for n, p in model.named_parameters() if ".default." in n and p.requires_grad]
-    optimizer = torch.optim.AdamW(trainable_params, lr=args.lr, weight_decay=0.0)
-    total_steps = (len(train_data) // args.grad_accum) * args.epochs
-    scheduler = get_cosine_schedule_with_warmup(
-        optimizer, num_warmup_steps=min(10, max(1, total_steps // 10)), num_training_steps=max(1, total_steps)
-    )
-
-    global_step = 0
-    optimizer.zero_grad()
-
-    for epoch in range(args.epochs):
-        random.shuffle(train_data)
-        pbar = tqdm(enumerate(train_data), total=len(train_data), desc=f"SDFT Epoch {epoch + 1}/{args.epochs}")
-
-        for idx, ex in pbar:
+    session_start = time.time()
+    base_elapsed = state["elapsed_h"]
+    for epoch in range(state["epoch"], args.epochs):
+        order = list(range(len(train)))
+        random.Random(args.seed * 1000 + epoch).shuffle(order)  # same order after a resume
+        first = state["step_in_epoch"] if epoch == state["epoch"] else 0
+        for step in range(first, steps_per_epoch):
             t0 = time.time()
-            student_prompt = format_chat(tokenizer, ex["prompt"])
-            teacher_prompt = format_chat(
-                tokenizer, build_teacher_prompt(ex["prompt"], ex["demonstration"])
-            )
-
-            s_inputs = tokenizer(student_prompt, return_tensors="pt", truncation=True, max_length=1024).to(
-                model.device
-            )
-            t_inputs = tokenizer(teacher_prompt, return_tensors="pt", truncation=True, max_length=1536).to(
-                model.device
-            )
-
-            # 1. On-policy student rollout: y ~ pi_theta(. | x)
-            model.eval()
-            model.set_adapter("default")
-            with torch.no_grad():
-                gen_out = model.generate(
-                    **s_inputs,
-                    max_new_tokens=args.max_new_tokens,
-                    do_sample=True,
-                    temperature=1.0,
-                    top_p=0.95,
-                    pad_token_id=tokenizer.pad_token_id,
+            batch = [train[i] for i in order[step * args.batch_size:(step + 1) * args.batch_size]]
+            losses, lengths, truncs, skipped, gen_s, train_s = [], [], 0, 0, 0.0, 0.0
+            optimizer.zero_grad(set_to_none=True)
+            for g in range(0, len(batch), args.gen_batch_size):
+                chunk = batch[g:g + args.gen_batch_size]
+                prompts = [chat_ids(tokenizer, *student_context(ex["system"], ex["question"])) for ex in chunk]
+                tg = time.time()
+                model.eval()
+                _set_active(model, "default", student_params)
+                rollouts = generate_batch(
+                    model, tokenizer, prompts, args.max_new_tokens,
+                    do_sample=True, temperature=args.temperature, top_p=args.top_p,
                 )
-            prompt_len_s = s_inputs["input_ids"].shape[1]
-            resp_ids = gen_out[:, prompt_len_s:]
-            if resp_ids.shape[1] < 2:
-                continue
+                gen_s += time.time() - tg
+                tt = time.time()
+                for ex, prompt, ro in zip(chunk, prompts, rollouts):
+                    loss = sdft_example_loss(model, tokenizer, ex, prompt, ro["ids"], student_params, args)
+                    lengths.append(len(ro["ids"]))
+                    truncs += int(ro["truncated"])
+                    if loss is None:
+                        skipped += 1
+                        continue
+                    (loss / len(batch)).backward()
+                    losses.append(loss.item())
+                train_s += time.time() - tt
 
-            # 2. Teacher logits on the SAME student-generated trajectory
-            teacher_full_ids = torch.cat([t_inputs["input_ids"], resp_ids], dim=1)
-            prompt_len_t = t_inputs["input_ids"].shape[1]
+            grad_norm = torch.nn.utils.clip_grad_norm_(student_params, args.max_grad_norm)
+            optimizer.step()
+            scheduler.step()
+            update_ema_adapter(model, args.ema_alpha)
+            state["global_step"] += 1
+            state["epoch"], state["step_in_epoch"] = epoch, step + 1
+            state["elapsed_h"] = base_elapsed + (time.time() - session_start) / 3600
 
-            model.set_adapter("teacher")
-            with torch.no_grad():
-                t_logits_all = model(input_ids=teacher_full_ids).logits
-            t_resp_logits = t_logits_all[:, prompt_len_t - 1 : -1, :].detach()
+            wandb.log({
+                "train/kl_loss": float(np.mean(losses)) if losses else float("nan"),
+                "train/grad_norm": float(grad_norm),
+                "train/lr": scheduler.get_last_lr()[0],
+                "train/resp_tokens_mean": float(np.mean(lengths)),
+                "train/truncated_frac": truncs / len(batch),
+                "train/skipped": skipped,
+                "time/step_sec": time.time() - t0,
+                "time/gen_sec": gen_s,
+                "time/train_sec": train_s,
+                "time/elapsed_h": state["elapsed_h"],
+                "epoch": epoch + (step + 1) / steps_per_epoch,
+            }, step=state["global_step"])
+            print(f"[ep {epoch + 1} step {step + 1}/{steps_per_epoch}] kl={np.mean(losses) if losses else float('nan'):.4f} "
+                  f"len={np.mean(lengths):.0f} gen={gen_s:.0f}s train={train_s:.0f}s", flush=True)
 
-            # 3. Student logits on the student-generated trajectory
-            model.train()
-            model.set_adapter("default")
-            for p in trainable_params:
-                p.requires_grad_(True)
-            s_logits_all = model(input_ids=gen_out).logits
-            s_resp_logits = s_logits_all[:, prompt_len_s - 1 : -1, :]
+            out_of_time = args.max_hours and (time.time() - session_start) / 3600 > args.max_hours
+            if out_of_time or (args.save_every and state["global_step"] % args.save_every == 0):
+                save_resume_checkpoint(resume_dir, model, optimizer, scheduler, state)
+            if out_of_time:
+                print(f"Time budget of {args.max_hours} h reached; re-run the same command to resume.")
+                wandb.finish()
+                return
 
-            # Mask out first few tokens to suppress learned artifacts (Section 5)
-            mask = torch.ones((1, resp_ids.shape[1]), device=model.device)
-            if resp_ids.shape[1] > args.artifact_mask_tokens:
-                mask[:, : args.artifact_mask_tokens] = 0.0
+        # End of epoch: save the student adapter for validation-based checkpoint selection.
+        state["epoch"], state["step_in_epoch"] = epoch + 1, 0
+        _set_active(model, "default", student_params)
+        model.save_pretrained(os.path.join(out_dir, f"epoch{epoch + 1}"), selected_adapters=["default"])
+        tokenizer.save_pretrained(os.path.join(out_dir, f"epoch{epoch + 1}"))
+        save_resume_checkpoint(resume_dir, model, optimizer, scheduler, state)
 
-            loss = compute_analytic_kl_loss(s_resp_logits, t_resp_logits, mask, kl_mode=args.kl_mode)
-            (loss / args.grad_accum).backward()
-
-            if (idx + 1) % args.grad_accum == 0 or (idx + 1) == len(train_data):
-                torch.nn.utils.clip_grad_norm_(trainable_params, 1.0)
-                optimizer.step()
-                scheduler.step()
-                optimizer.zero_grad()
-                update_ema_adapter(model, alpha=args.ema_alpha)
-                global_step += 1
-
-                dt = max(time.time() - t0, 1e-6)
-                wandb.log(
-                    {
-                        "train/kl_loss": loss.item(),
-                        "train/lr": scheduler.get_last_lr()[0],
-                        "train/resp_tokens": resp_ids.shape[1],
-                        "train/step_sec": dt,
-                        "epoch": epoch + (idx + 1) / len(train_data),
-                    },
-                    step=global_step,
-                )
-                pbar.set_postfix({"kl_loss": f"{loss.item():.4f}"})
-
-    save_dir = os.path.join(args.output_dir, f"sdft_{args.task}_ema{args.ema_alpha}_s{args.seed}")
-    os.makedirs(save_dir, exist_ok=True)
-    model.set_adapter("default")
-    model.save_pretrained(save_dir)
-    tokenizer.save_pretrained(save_dir)
+    with open(os.path.join(out_dir, "DONE"), "w") as f:
+        f.write(json.dumps(state))
     wandb.finish()
 
 
+def build_parser() -> argparse.ArgumentParser:
+    """Command-line options (defaults = the team's main configuration)."""
+    p = argparse.ArgumentParser(description="SDFT trainer (LoRA / QLoRA)")
+    p.add_argument("--model_name", default="Qwen/Qwen2.5-7B-Instruct")
+    p.add_argument("--task", default="science", choices=["science", "tool_use"])
+    p.add_argument("--epochs", type=int, default=2)
+    p.add_argument("--lr", type=float, default=1e-4)
+    p.add_argument("--warmup_steps", type=int, default=10)
+    p.add_argument("--batch_size", type=int, default=32, help="Prompts per optimizer step")
+    p.add_argument("--gen_batch_size", type=int, default=8, help="Rollouts generated together")
+    p.add_argument("--max_grad_norm", type=float, default=1.0)
+    p.add_argument("--ema_alpha", type=float, default=0.01)
+    p.add_argument("--kl_mode", default="forward", choices=["forward", "reverse"])
+    p.add_argument("--max_new_tokens", type=int, default=1024)
+    p.add_argument("--temperature", type=float, default=1.0)
+    p.add_argument("--top_p", type=float, default=1.0)
+    p.add_argument("--artifact_mask_tokens", type=int, default=3)
+    p.add_argument("--max_train", type=int, default=None, help="Training subset size (None = all)")
+    p.add_argument("--data_seed", type=int, default=0)
+    p.add_argument("--data_source", default="auto", choices=["auto", "hf", "github"])
+    p.add_argument("--hf_dataset", default=None)
+    p.add_argument("--quant_bits", type=int, default=16, choices=[4, 8, 16])
+    p.add_argument("--lora_r", type=int, default=32)
+    p.add_argument("--lora_alpha", type=int, default=64)
+    p.add_argument("--seed", type=int, default=42)
+    p.add_argument("--max_hours", type=float, default=None, help="Stop and checkpoint after this many hours")
+    p.add_argument("--save_every", type=int, default=10, help="Optimizer steps between resume checkpoints")
+    p.add_argument("--output_dir", default="./checkpoints")
+    p.add_argument("--run_name", default=None)
+    p.add_argument("--tags", nargs="*", default=[])
+    return p
+
+
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="SDFT Trainer (QLoRA)")
-    parser.add_argument("--model_name", type=str, default="Qwen/Qwen2.5-3B-Instruct")
-    parser.add_argument("--task", type=str, default="science_qa", choices=["science_qa", "tool_use"])
-    parser.add_argument("--epochs", type=int, default=2)
-    parser.add_argument("--lr", type=float, default=1e-4)
-    parser.add_argument("--grad_accum", type=int, default=8)
-    parser.add_argument("--ema_alpha", type=float, default=0.02)
-    parser.add_argument("--kl_mode", type=str, default="forward", choices=["forward", "reverse"])
-    parser.add_argument("--max_new_tokens", type=int, default=384)
-    parser.add_argument("--artifact_mask_tokens", type=int, default=4)
-    parser.add_argument("--max_train", type=int, default=200)
-    parser.add_argument("--quant_bits", type=int, default=4, choices=[4, 8, 16])
-    parser.add_argument("--lora_r", type=int, default=32)
-    parser.add_argument("--lora_alpha", type=int, default=64)
-    parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--output_dir", type=str, default="./checkpoints")
-    train_sdft(parser.parse_args())
+    train_sdft(build_parser().parse_args())

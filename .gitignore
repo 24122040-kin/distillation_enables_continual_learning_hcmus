@@ -9,3 +9,5 @@ wandb/
 *.bin
 *.safetensors
 .DS_Store
+data_cache/
+.pytest_cache/

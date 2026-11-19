@@ -4,6 +4,7 @@
 > Tài khoản A chạy thí nghiệm quan trọng nhất của deck: **SDFT trên Qwen2.5-7B, task Science Q&A (E1)**.
 > Lịch tổng của cả nhóm nằm trong `docs/reproduction_plan.md` §5.
 > **Pilot đã chạy (19/11 22:12): dùng `N_SCI=352`.**
+> **Cập nhật 20/11: nhóm chỉ còn 2 tài khoản.** Lịch mới ở `docs/phan_cong_2_nguoi.md`. Sáng 20/11 chạy **`day2_a`** thay cho `eval_sdft e1` (bước 6.3); job này đánh giá thêm cả model gốc.
 
 ## Tóm tắt việc của A
 
@@ -11,10 +12,10 @@
 |---|---|---|---|
 | **Tối 19/11** | Bước 1–3: tạo notebook, chạy `pilot`, gửi số `N_SCI` / `N_TOOL` cho nhóm | ~1 giờ | Tương tác (ngồi xem) |
 | **Tối 19/11** | Bước 4: chạy `e1_sdft` qua đêm | ~10 giờ | Chạy nền, đóng trình duyệt được |
-| **Sáng 20/11** | Bước 6: chạy `eval_sdft e1` | ~1–2 giờ | Chạy nền |
+| **Sáng 20/11** | Bước 6: chạy `day2_a` (đánh giá SDFT Science + model gốc) | ~3–4 giờ | Chạy nền |
 | **Trưa 20/11** | Bước 7: gửi kết quả cho người làm slide | 5 phút | |
 
-Quota GPU cần cho A: khoảng **14 giờ** trong tuần này.
+Quota GPU cần cho A: khoảng **16 giờ** trong tuần này.
 
 ---
 
@@ -151,7 +152,7 @@ Thêm **ô 4**, dùng đúng số `N_SCI` của đêm qua:
 ```python
 # Nếu 6.1 báo train CHƯA xong, bỏ dấu # ở dòng dưới để train tiếp trước:
 # !N_SCI=352 bash scripts/kaggle_jobs.sh e1_sdft
-!N_SCI=352 bash scripts/kaggle_jobs.sh eval_sdft e1
+!N_SCI=352 bash scripts/kaggle_jobs.sh day2_a
 ```
 
 Bấm **Save Version → Save & Run All**, rồi tắt phiên tương tác. Thời gian chạy:

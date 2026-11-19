@@ -12,8 +12,9 @@
 #   A, day 2   : eval_sdft e1            (~2-3 h)
 #   C, day 2   : eval_sdft e2            (~2 h)
 #   B, day 2   : e3_small                (1.5B + 3B Science, ~9 h)
-# With only 2 accounts, C's jobs move to A on day 2 and e3_small keeps only 1.5B:
-#   M_E3=Qwen/Qwen2.5-1.5B-Instruct bash scripts/kaggle_jobs.sh e3_small
+# Current plan (2 accounts, docs/phan_cong_2_nguoi.md):
+#   A night : e1_sdft            B night : night2 (GPU0 e2_sdft | GPU1 SFT x2 + E3 3B)
+#   A day 2 : day2_a             B day 2 : day2_b
 #
 # Pilot on Kaggle T4 (19/11): 50.6 s/example Science, 33.4 s/example Tool Use -> N_SCI=352, N_TOOL=528.
 # Sub-sample sizes come from the pilot: N = 10 h * 3600 / (2 epochs * seconds per example).
@@ -47,7 +48,8 @@ try() { "$@" || echo "!!! FAILED (exit $?): $*" | tee -a "$EV/FAILED.txt"; }
 train_sdft() {  # model task n extra...
   local m=$1 t=$2 n=$3; shift 3
   CUDA_VISIBLE_DEVICES=$TRAIN_GPUS python src/sdft_trainer.py --model_name "$m" --task "$t" --max_train "$n" --batch_size "$BS" \
-    --gen_batch_size "${GEN_BS:-8}" --seed "$SEED" --max_hours 11 --output_dir "$CK" "${Q[@]}" "$@"
+    --gen_batch_size "${GEN_BS:-8}" --seed "$SEED" --max_hours "${MAX_HOURS:-11}" --output_dir "$CK" "${Q[@]}" \
+    ${MAX_NEW:+--max_new_tokens "$MAX_NEW"} "$@"
 }
 train_sft() {   # model task n
   CUDA_VISIBLE_DEVICES=$TRAIN_GPUS python src/sft_baseline.py --model_name "$1" --task "$2" --max_train "$3" --batch_size "$BS" \
@@ -56,7 +58,8 @@ train_sft() {   # model task n
 eval_new() {    # model task method split [checkpoint] [extra...]
   local m=$1 t=$2 meth=$3 split=$4 ck=${5:-}; shift 4; [ $# -gt 0 ] && shift
   CUDA_VISIBLE_DEVICES=$EVAL_GPUS python src/evaluate.py --model_name "$m" --task "$t" --method "$meth" --split "$split" \
-    ${ck:+--checkpoint_dir "$ck"} --seed "$SEED" --output_dir "$EV" "${QE[@]}" ${EVAL_MAX:+--max_examples "$EVAL_MAX"} "$@"
+    ${ck:+--checkpoint_dir "$ck"} --seed "$SEED" --output_dir "$EV" "${QE[@]}" ${EVAL_MAX:+--max_examples "$EVAL_MAX"} \
+    ${MAX_NEW:+--max_new_tokens "$MAX_NEW"} "$@"
 }
 eval_prior() {  # model name [checkpoint]
   local m=$1 name=$2 ck=${3:-}
@@ -119,6 +122,37 @@ PY
     try eval_new "$M7" science base val "" --with_demo --run_name "teacher-$(short $M7)-science"
     try eval_new "$M7" tool_use base val "" --with_demo --run_name "teacher-$(short $M7)-tool"
     try eval_prior "$M7" base-7b ;;
+  e1_sft_train) train_sft "$M7" science "$N_SCI" ;;
+  e2_sft_train) train_sft "$M7" tool_use "$N_TOOL" ;;
+  eval_sft)
+    case "${2:?e1 or e2}" in
+      e1) best_epoch_eval "$M7" science sft "$CK/sft_science_$(short $M7)_n${N_SCI}_s${SEED}" ;;
+      e2) best_epoch_eval "$M7" tool_use sft "$CK/sft_tool_use_$(short $M7)_n${N_TOOL}_s${SEED}" ;;
+    esac ;;
+  night2)
+    # Two accounts only: one session, two independent jobs, one per T4.
+    #   GPU 0: 7B SDFT Tool Use.   GPU 1: 7B SFT (both tasks, training only), then E3 with 3B.
+    # Everything must finish before Kaggle's 12 h limit, so GPU 1 gets a hard timeout.
+    python -c "from huggingface_hub import snapshot_download as d; d('$M7')"   # download once, no race
+    me=$(readlink -f "$0")
+    MAX_HOURS=${MAX_HOURS:-10.5} TRAIN_GPUS=0 bash "$me" e2_sdft > "$EV/gpu0_e2_sdft.log" 2>&1 &
+    p0=$!
+    ${TIMEOUT_BIN:-timeout} "${GPU1_SECONDS:-39000}" bash -c "
+      TRAIN_GPUS=1 EVAL_GPUS=1 bash '$me' e1_sft_train
+      TRAIN_GPUS=1 EVAL_GPUS=1 bash '$me' e2_sft_train
+      TRAIN_GPUS=1 EVAL_GPUS=1 MAX_HOURS=6 M_E3='$M3' bash '$me' e3_small" > "$EV/gpu1_chain.log" 2>&1 &
+    p1=$!
+    echo "started: GPU0 pid $p0 (e2_sdft), GPU1 pid $p1 (SFT + E3); logs in $EV/gpu*.log"
+    wait "$p0" || echo "!!! GPU0 job exited with an error, see $EV/gpu0_e2_sdft.log" | tee -a "$EV/FAILED.txt"
+    wait "$p1" || echo "!!! GPU1 chain exited with an error or timed out, see $EV/gpu1_chain.log" | tee -a "$EV/FAILED.txt"
+    tail -n 5 "$EV/gpu0_e2_sdft.log" "$EV/gpu1_chain.log" ;;
+  day2_a)       # Kin, 20/11 morning: both GPUs
+    try best_epoch_eval "$M7" science sdft "$CK/sdft_science_$(short $M7)_n${N_SCI}_ema0.01_forward_s${SEED}"
+    bash "$(readlink -f "$0")" base ;;
+  day2_b)       # second person, 20/11 morning: both GPUs
+    try best_epoch_eval "$M7" tool_use sdft "$CK/sdft_tool_use_$(short $M7)_n${N_TOOL}_ema0.01_forward_s${SEED}"
+    try best_epoch_eval "$M7" science sft "$CK/sft_science_$(short $M7)_n${N_SCI}_s${SEED}"
+    try best_epoch_eval "$M7" tool_use sft "$CK/sft_tool_use_$(short $M7)_n${N_TOOL}_s${SEED}" ;;
   e1_sft)
     train_sft "$M7" science "$N_SCI"
     best_epoch_eval "$M7" science sft "$CK/sft_science_$(short $M7)_n${N_SCI}_s${SEED}" ;;

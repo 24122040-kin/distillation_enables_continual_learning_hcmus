@@ -6,6 +6,7 @@ re-implementation of **Self-Distillation Fine-Tuning (SDFT)** from
 
 - Plan, scope, compute estimates and deviation list: [`docs/reproduction_plan.md`](docs/reproduction_plan.md)
 - Slide-deck outline: [`docs/slide_outline.md`](docs/slide_outline.md)
+- **Current schedule, 2 people / 2 Kaggle accounts (Vietnamese): [`docs/phan_cong_2_nguoi.md`](docs/phan_cong_2_nguoi.md)**
 - Kaggle runbook, account A (Vietnamese): [`docs/huong_dan_tai_khoan_A.md`](docs/huong_dan_tai_khoan_A.md)
 - Kaggle runbook, accounts B and C (Vietnamese): [`docs/huong_dan_tai_khoan_B_C.md`](docs/huong_dan_tai_khoan_B_C.md)
 

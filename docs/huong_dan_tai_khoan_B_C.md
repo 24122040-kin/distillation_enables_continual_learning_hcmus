@@ -1,5 +1,7 @@
 # Hướng dẫn chạy Tài khoản B và C (Kaggle)
 
+> ⚠️ **Đã thay thế (20/11):** nhóm chỉ còn 2 tài khoản. Dùng `docs/phan_cong_2_nguoi.md`: việc của B và C gộp vào job `night2` (2 GPU song song) và `day2_b`. File này chỉ giữ để tham khảo cách chạy từng job riêng lẻ.
+
 > Viết ngày 19/11/2026. Deadline nộp bài: **23:59 thứ Bảy 21/11**.
 > Tài khoản A (SDFT 7B Science) có hướng dẫn riêng: `docs/huong_dan_tai_khoan_A.md`. Các bước tạo notebook, gắn secret W&B, chạy nền và chép checkpoint giống hệt, file này chỉ ghi phần khác.
 

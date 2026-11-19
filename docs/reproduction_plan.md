@@ -236,6 +236,8 @@ Giới hạn 12 giờ áp dụng **cho từng run**, không phải cho cả thí
 
 ## 5. Lịch đến deadline 23:59 thứ Bảy 21/11/2026 (3 tài khoản Kaggle)
 
+> **Cập nhật 20/11:** chỉ còn 2 tài khoản. Lịch đang dùng nằm ở `docs/phan_cong_2_nguoi.md`. Tài khoản thứ hai chạy 2 job song song trên 2 GPU (`night2`), và E3 tối nay chỉ chạy 3B. Bảng dưới đây là lịch cũ.
+
 Thời gian GPU là ràng buộc lớn nhất: mỗi run SDFT 7B mất khoảng 9–10 giờ, nên **3 run dài phải chạy song song từ tối nay (19/11)**. Phần đọc paper trong deck (slide 1–23) không cần kết quả, nên viết trong lúc GPU chạy. Job tương ứng nằm trong `scripts/kaggle_jobs.sh`; hướng dẫn từng bước: `docs/huong_dan_tai_khoan_A.md`, `docs/huong_dan_tai_khoan_B_C.md`.
 
 | Thời điểm | Tài khoản A | Tài khoản B | Tài khoản C | Người không trực GPU |

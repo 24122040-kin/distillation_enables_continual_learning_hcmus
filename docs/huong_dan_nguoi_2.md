@@ -100,8 +100,12 @@ Không cần làm gì thêm.
 
 Notebook 1 đã chạy xong SFT Science 7B, SFT Tool Use 7B và một phần model 3B, nhưng SDFT Tool Use 7B
 chết ở khoảng step 10 vì `CUDA out of memory` (đã sửa trong code) và chưa kịp lưu checkpoint.
-Notebook này chạy lại SDFT Tool Use từ đầu trên GPU 0 (khoảng 10–11 tiếng), đồng thời GPU 1 làm nốt
+Notebook này chạy lại SDFT Tool Use từ đầu trên GPU 0 (khoảng 10,5 tiếng), đồng thời GPU 1 làm nốt
 model 3B (SDFT 3B và 2 lần đánh giá test).
+
+Mỗi step SDFT Tool Use mất 10–18 phút, nên trong 10,5 tiếng chỉ chạy được khoảng 40–45 / 66 step:
+có `epoch1/` (sau ~8 tiếng) và `resume/`, nhưng **chưa có `epoch2/` và `DONE`**. Như vậy là bình thường.
+Notebook 2 sẽ đánh giá SDFT Tool Use ở **epoch 1** (bằng số epoch của SFT, cùng 528 mẫu).
 
 1. **Create → New Notebook**, đặt tên `sdft-B-tool`. Accelerator `GPU T4 x2`, Internet `On`,
    tick **Attach** cho `WANDB_API_KEY`.
@@ -133,11 +137,11 @@ Nếu một GPU lỗi, log chính của notebook sẽ in luôn 40 dòng cuối c
 
 Mở tab **Output** → thư mục `checkpoints` của `sdft-B-tool` (thư mục `sdft_tool_use_...`) và của `sdft-B-night` (hai thư mục `sft_...`). Phải có:
 
-- `sdft_tool_use_Qwen2.5-7B-Instruct_n528_ema0.01_forward_s42`, bên trong có `epoch1`, `epoch2` và file `DONE`
+- `sdft_tool_use_Qwen2.5-7B-Instruct_n528_ema0.01_forward_s42`, bên trong có `epoch1`
 - `sft_science_Qwen2.5-7B-Instruct_n352_s42`, bên trong có `epoch1`
 - `sft_tool_use_Qwen2.5-7B-Instruct_n528_s42`, bên trong có `epoch1`
 
-Nếu thư mục `sdft_tool_use_...` **không có `DONE`**, xem dòng chú thích trong ô 4 bên dưới.
+Thư mục `sdft_tool_use_...` có `epoch1` là đủ; **không cần `DONE`**. Không bỏ dấu # ở dòng chú thích trong ô 4.
 
 ### Bước 2. Tạo notebook
 

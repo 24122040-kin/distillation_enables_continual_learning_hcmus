@@ -288,6 +288,7 @@ Thời gian GPU là ràng buộc lớn nhất: mỗi run SDFT 7B mất khoảng 
 | EMA trên A, B riêng | Dùng 2 adapter LoRA | Teacher hơi khác EMA thật | Ghi chú; có thể thử teacher cố định (α=0) để so |
 | Train 4-bit NF4, đánh giá fp16 | VRAM 16 GB; 4-bit sinh token chậm | Adapter train trên base 4-bit, áp lên base fp16 | Ghi rõ; nếu kịp, đánh giá Base 4-bit trên 1 GPU để so |
 | Tập con 14% dữ liệu train (352 / 528) | Pilot đo 50,6 / 33,4 s/mẫu trên T4 | Ít bước tối ưu, SFT có thể quên ít hơn paper | §4.5b |
+| SDFT Tool Use 7B đánh giá ở epoch 1 (nếu epoch 2 không kịp) | Lần chạy 19/11 chết vì CUDA OOM ở step 7; chạy lại 20/11 mất 10–18 phút/step (response dài dần), 66 step không vừa 1 phiên 10,5 h | SDFT ít bước hơn paper; SFT cũng 1 epoch trên cùng 528 mẫu nên so sánh vẫn công bằng về lượng dữ liệu | `time/step_sec`, `train/resp_tokens_mean` trên W&B; ghi rõ epoch dùng để đánh giá |
 | max gen 1024 thay 2048 | Theo code chính thức, tiết kiệm thời gian | Gần như không (p90 demo ~480 token) | Tỉ lệ response bị cắt, log trên W&B |
 | Không sweep đầy đủ | Ngân sách | Số của nhóm có thể thấp hơn "best-of-sweep" của paper | Ghi rõ cấu hình đã chọn |
 | 1 seed thay 3 | Ngân sách | Không có khoảng tin cậy | Nếu kịp: 3 seed cho E1 |

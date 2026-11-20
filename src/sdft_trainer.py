@@ -32,6 +32,7 @@ from typing import Dict, List, Optional
 import numpy as np
 import torch
 import torch.nn.functional as F
+from torch.utils.checkpoint import checkpoint as grad_checkpoint
 from peft import LoraConfig, get_peft_model
 from transformers import get_cosine_schedule_with_warmup
 import wandb
@@ -46,11 +47,28 @@ LORA_TARGETS = ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", 
 # --------------------------------------------------------------------------- #
 # Core SDFT pieces
 # --------------------------------------------------------------------------- #
+def _chunk_kl(
+    s_chunk: torch.Tensor,
+    t_chunk: torch.Tensor,
+    m_chunk: torch.Tensor,
+    kl_mode: str,
+) -> torch.Tensor:
+    """Compute masked per-token KL sum over one sequence slice in float32."""
+    s_logp = F.log_softmax(s_chunk.float(), dim=-1)
+    t_logp = F.log_softmax(t_chunk.float(), dim=-1)
+    if kl_mode == "forward":
+        token_kl = (t_logp.exp() * (t_logp - s_logp)).sum(-1)
+    else:
+        token_kl = (s_logp.exp() * (s_logp - t_logp)).sum(-1)
+    return (token_kl * m_chunk).sum()
+
+
 def compute_analytic_kl_loss(
     student_logits: torch.Tensor,
     teacher_logits: torch.Tensor,
     mask: torch.Tensor,
     kl_mode: str = "forward",
+    chunk_size: int = 128,
 ) -> torch.Tensor:
     """Full analytic per-token KL over the vocabulary, averaged over unmasked tokens.
 
@@ -65,21 +83,27 @@ def compute_analytic_kl_loss(
     kl_mode : str
         ``"forward"``: sum_v p_T log(p_T / p_S) (used for the paper's results);
         ``"reverse"``: sum_v p_S log(p_S / p_T) (Eq. 1 / Eq. 2).
+    chunk_size : int
+        Time-axis chunk size for gradient-checkpointed KL to bound peak VRAM.
 
     Returns
     -------
     torch.Tensor
         Scalar loss.
     """
-    s_logp = F.log_softmax(student_logits.float(), dim=-1)
-    t_logp = F.log_softmax(teacher_logits.float(), dim=-1)
-    if kl_mode == "forward":
-        token_kl = (t_logp.exp() * (t_logp - s_logp)).sum(-1)
-    elif kl_mode == "reverse":
-        token_kl = (s_logp.exp() * (s_logp - t_logp)).sum(-1)
-    else:
+    if kl_mode not in ("forward", "reverse"):
         raise ValueError(f"Unsupported kl_mode: {kl_mode}")
-    return (token_kl * mask).sum() / mask.sum().clamp(min=1.0)
+    use_ckpt = student_logits.requires_grad and student_logits.size(0) > chunk_size
+    total = student_logits.new_zeros((), dtype=torch.float32)
+    for i in range(0, student_logits.size(0), chunk_size):
+        s_c = student_logits[i: i + chunk_size]
+        t_c = teacher_logits[i: i + chunk_size]
+        m_c = mask[i: i + chunk_size]
+        if use_ckpt:
+            total = total + grad_checkpoint(_chunk_kl, s_c, t_c, m_c, kl_mode, use_reentrant=False)
+        else:
+            total = total + _chunk_kl(s_c, t_c, m_c, kl_mode)
+    return total / mask.sum().clamp(min=1.0)
 
 
 @torch.no_grad()
@@ -169,7 +193,7 @@ def sdft_example_loss(
     _set_active(model, "teacher", student_params)
     with torch.no_grad():
         t_logits = model(input_ids=torch.cat([t_prompt, resp])[None]).logits[0]
-    t_logits = t_logits[len(t_prompt) - 1: len(t_prompt) - 1 + n].detach()
+    t_logits = t_logits[len(t_prompt) - 1: len(t_prompt) - 1 + n].detach().clone()
 
     # Student log-probs on the same trajectory, conditioned on the task prompt only.
     model.train()

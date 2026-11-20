@@ -61,8 +61,9 @@ wandb.login(key=os.environ["WANDB_API_KEY"], verify=True)
 **Ô 2: tải code và cài thư viện** (~5 phút)
 
 ```python
-!git clone https://github.com/24122040-kin/distillation_enables_continual_learning_hcmus.git
-%cd distillation_enables_continual_learning_hcmus
+!rm -rf /kaggle/working/distillation_enables_continual_learning_hcmus
+!git clone --depth 1 https://github.com/24122040-kin/distillation_enables_continual_learning_hcmus.git /kaggle/working/distillation_enables_continual_learning_hcmus
+%cd /kaggle/working/distillation_enables_continual_learning_hcmus
 !git log --oneline -1
 !bash scripts/kaggle_jobs.sh setup
 ```

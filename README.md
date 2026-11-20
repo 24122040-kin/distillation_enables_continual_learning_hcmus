@@ -9,6 +9,7 @@ re-implementation of **Self-Distillation Fine-Tuning (SDFT)** from
 - Kaggle runbook, person 2 (Vietnamese): [`docs/huong_dan_nguoi_2.md`](docs/huong_dan_nguoi_2.md)
 - Kaggle runbook, account A / Kin (Vietnamese): [`docs/huong_dan_tai_khoan_A.md`](docs/huong_dan_tai_khoan_A.md)
 - Hugging Face dataset guide (Vietnamese): [`docs/huong_dan_data_huggingface.md`](docs/huong_dan_data_huggingface.md)
+- What to collect when a Kaggle job fails (Vietnamese): [`docs/thu_thap_log_loi.md`](docs/thu_thap_log_loi.md)
 
 ---
 

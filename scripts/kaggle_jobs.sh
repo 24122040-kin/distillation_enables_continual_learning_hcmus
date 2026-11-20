@@ -88,7 +88,11 @@ eval_prior() {  # model name [checkpoint]
 # Pick the epoch with the best validation accuracy, then evaluate it on test.
 best_epoch_eval() {  # model task method run_dir
   local m=$1 t=$2 meth=$3 dir=$4 best="" bestacc=-1
-  for e in "$dir"/epoch*; do
+  local eps=("$dir"/epoch*)
+  if [ "${#eps[@]}" -eq 1 ]; then   # one epoch (SFT, or SDFT stopped early): nothing to select
+    best=${eps[0]}; bestacc=n/a
+  else
+  for e in "${eps[@]}"; do
     eval_new "$m" "$t" "$meth" val "$e" --run_name "val-$(short "$dir")-$(short "$e")"
     acc=$(python -c "import json,sys;print(json.load(open(sys.argv[1]))['metrics']['acc'])" \
           "$EV/val-$(short "$dir")-$(short "$e").json")
@@ -96,9 +100,10 @@ best_epoch_eval() {  # model task method run_dir
       best=$e; bestacc=$acc
     fi
   done
+  fi
   echo "best checkpoint: $best (val acc $bestacc)"
   eval_new "$m" "$t" "$meth" test "$best" --run_name "test-$(short "$dir")-$(short "$best")"
-  try eval_prior "$m" "$(short "$dir")" "$best"
+  [ -n "${SKIP_PRIOR:-}" ] || try eval_prior "$m" "$(short "$dir")" "$best"
 }
 
 mkdir -p "$EV"
@@ -134,7 +139,7 @@ PY
     try eval_new "$M7" tool_use base test "" --run_name "test-base-7b-tool"
     try eval_new "$M7" science base val "" --with_demo --run_name "teacher-$(short $M7)-science"
     try eval_new "$M7" tool_use base val "" --with_demo --run_name "teacher-$(short $M7)-tool"
-    try eval_prior "$M7" base-7b ;;
+    [ -n "${SKIP_PRIOR:-}" ] || try eval_prior "$M7" base-7b ;;
   e1_sft_train) train_sft "$M7" science "$N_SCI" ;;
   e2_sft_train) train_sft "$M7" tool_use "$N_TOOL" ;;
   eval_sft)

@@ -72,7 +72,7 @@ eval_new() {    # model task method split [checkpoint] [extra...]
   local m=$1 t=$2 meth=$3 split=$4 ck=${5:-}; shift 4; [ $# -gt 0 ] && shift
   CUDA_VISIBLE_DEVICES=$EVAL_GPUS python src/evaluate.py --model_name "$m" --task "$t" --method "$meth" --split "$split" \
     ${ck:+--checkpoint_dir "$ck"} --seed "$SEED" --output_dir "$EV" "${QE[@]}" ${EVAL_MAX:+--max_examples "$EVAL_MAX"} \
-    ${MAX_NEW:+--max_new_tokens "$MAX_NEW"} "$@"
+    ${EVAL_BS:+--batch_size "$EVAL_BS"} ${MAX_NEW:+--max_new_tokens "$MAX_NEW"} "$@"
 }
 eval_prior() {  # model name [checkpoint]
   local m=$1 name=$2 ck=${3:-}
@@ -102,6 +102,7 @@ best_epoch_eval() {  # model task method run_dir
   done
   fi
   echo "best checkpoint: $best (val acc $bestacc)"
+  echo "$best" > "$EV/best-$(short "$dir").txt"   # read by day2_b's prior-capability pass
   eval_new "$m" "$t" "$meth" test "$best" --run_name "test-$(short "$dir")-$(short "$best")"
   [ -n "${SKIP_PRIOR:-}" ] || try eval_prior "$m" "$(short "$dir")" "$best"
 }
@@ -210,11 +211,19 @@ PY2
     ;;
   day2_a)       # Kin, 20/11 morning (~1.5-2 h): only the SDFT Science evaluation, to save Kin's quota
     try best_epoch_eval "$M7" science sdft "$CK/sdft_science_$(short $M7)_n${N_SCI}_ema0.01_forward_s${SEED}" ;;
-  day2_b)       # second person, 20/11 noon (~6-7 h): SDFT Tool, SFT x2, then the Base model
-    try best_epoch_eval "$M7" tool_use sdft "$CK/sdft_tool_use_$(short $M7)_n${N_TOOL}_ema0.01_forward_s${SEED}"
-    try best_epoch_eval "$M7" science sft "$CK/sft_science_$(short $M7)_n${N_SCI}_s${SEED}"
-    try best_epoch_eval "$M7" tool_use sft "$CK/sft_tool_use_$(short $M7)_n${N_TOOL}_s${SEED}"
-    bash "$(readlink -f "$0")" base ;;
+  day2_b)       # second person: SDFT Tool, SFT x2, Base. New-task accuracy for all four first (the
+    # main tables), prior capabilities afterwards, so a quota cut only loses the least important part.
+    export EVAL_BS=${EVAL_BS:-48}   # 3x the default batch: T4 decoding is overhead-bound; OOM halves it
+    runs=("tool_use sdft $CK/sdft_tool_use_$(short $M7)_n${N_TOOL}_ema0.01_forward_s${SEED}"
+          "science sft $CK/sft_science_$(short $M7)_n${N_SCI}_s${SEED}"
+          "tool_use sft $CK/sft_tool_use_$(short $M7)_n${N_TOOL}_s${SEED}")
+    for r in "${runs[@]}"; do set -- $r; SKIP_PRIOR=1 try best_epoch_eval "$M7" "$1" "$2" "$3"; done
+    SKIP_PRIOR=1 bash "$(readlink -f "$0")" base
+    [ -n "${SKIP_PRIOR:-}" ] && exit 0
+    try eval_prior "$M7" base-7b
+    for r in "${runs[@]}"; do set -- $r
+      f="$EV/best-$(short "$3").txt"; if [ -f "$f" ]; then try eval_prior "$M7" "$(short "$3")" "$(cat "$f")"; fi
+    done ;;
   e1_sft)
     train_sft "$M7" science "$N_SCI"
     best_epoch_eval "$M7" science sft "$CK/sft_science_$(short $M7)_n${N_SCI}_s${SEED}" ;;

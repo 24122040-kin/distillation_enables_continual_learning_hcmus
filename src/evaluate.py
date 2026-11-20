@@ -41,6 +41,23 @@ PAPER_TABLE5 = {
 }
 
 
+def _generate_split_on_oom(model, tokenizer, prompts, max_new_tokens):
+    """Greedy ``generate_batch``; on CUDA OOM, retry the two halves of the batch separately.
+
+    Lets large ``--batch_size`` values (much faster on T4) degrade gracefully instead of crashing.
+    """
+    try:
+        return generate_batch(model, tokenizer, prompts, max_new_tokens, do_sample=False)
+    except torch.OutOfMemoryError:
+        if len(prompts) == 1:
+            raise
+        torch.cuda.empty_cache()
+        half = len(prompts) // 2
+        print(f"CUDA OOM at batch {len(prompts)}, retrying as {half} + {len(prompts) - half}", flush=True)
+        return (_generate_split_on_oom(model, tokenizer, prompts[:half], max_new_tokens)
+                + _generate_split_on_oom(model, tokenizer, prompts[half:], max_new_tokens))
+
+
 def evaluate_new_task(
     model,
     tokenizer,
@@ -83,7 +100,7 @@ def evaluate_new_task(
             else:
                 system, user = student_context(ex["system"], ex["question"])
             prompts.append(chat_ids(tokenizer, system, user))
-        outs = generate_batch(model, tokenizer, prompts, max_new_tokens, do_sample=False)
+        outs = _generate_split_on_oom(model, tokenizer, prompts, max_new_tokens)
         for ex, out in zip(chunk, outs):
             text = tokenizer.decode(out["ids"], skip_special_tokens=True)
             rec = {"id": ex["id"], "response": text, "n_tokens": len(out["ids"]), "truncated": out["truncated"]}

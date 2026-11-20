@@ -106,7 +106,7 @@ def test_chunked_kl_matches_unchunked():
     for mode in ("forward", "reverse"):
         s1 = torch.randn(T, V, requires_grad=True)
         s2 = s1.detach().clone().requires_grad_(True)
-        l1 = compute_analytic_kl_loss(s1, t, mask, mode, chunk_size=0)
+        l1 = compute_analytic_kl_loss(s1, t, mask, mode, chunk_size=10**6)
         l2 = compute_analytic_kl_loss(s2, t, mask, mode, chunk_size=8)
         l1.backward()
         l2.backward()

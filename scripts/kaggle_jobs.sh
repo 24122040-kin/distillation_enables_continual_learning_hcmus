@@ -224,6 +224,26 @@ PY2
     for r in "${runs[@]}"; do set -- $r
       f="$EV/best-$(short "$3").txt"; if [ -f "$f" ]; then try eval_prior "$M7" "$(short "$3")" "$(cat "$f")"; fi
     done ;;
+  final_b)
+    # Last GPU session of account B (21/11), after 7B SDFT Tool Use hit CUDA OOM twice (rollout
+    # generation at step 16/33, no epoch saved). Evaluations only, most important first; the
+    # notebook wraps this in `timeout` below the remaining quota so outputs are always saved.
+    export EVAL_BS=${EVAL_BS:-48}
+    sft_s="$CK/sft_science_$(short $M7)_n${N_SCI}_s${SEED}/epoch1"
+    sft_t="$CK/sft_tool_use_$(short $M7)_n${N_TOOL}_s${SEED}/epoch1"
+    sd3="$CK/sdft_science_$(short $M3)_n${N_SCI}_ema0.01_forward_s${SEED}/epoch1"
+    done_or() { [ -f "$EV/$1.json" ] || try "${@:2}"; }   # skip evaluations that already exist
+    done_or "test-$(short "$(dirname "$sft_s")")-epoch1" eval_new "$M7" science sft test "$sft_s" --run_name "test-$(short "$(dirname "$sft_s")")-epoch1"
+    done_or test-base-7b-science eval_new "$M7" science base test "" --run_name test-base-7b-science
+    done_or "test-$(short "$(dirname "$sft_t")")-epoch1" eval_new "$M7" tool_use sft test "$sft_t" --run_name "test-$(short "$(dirname "$sft_t")")-epoch1"
+    done_or test-base-7b-tool eval_new "$M7" tool_use base test "" --run_name test-base-7b-tool
+    try eval_prior "$M7" base-7b
+    try eval_prior "$M7" "$(short "$(dirname "$sft_s")")" "$sft_s"
+    done_or "test-$(short "$(dirname "$sd3")")-epoch1" env EVAL_GPUS=0 bash "$(readlink -f "$0")" eval_one "$M3" science sdft test "$sd3" --run_name "test-$(short "$(dirname "$sd3")")-epoch1"
+    done_or "teacher-$(short $M7)-science" eval_new "$M7" science base val "" --with_demo --run_name "teacher-$(short $M7)-science"
+    try eval_prior "$M7" "$(short "$(dirname "$sft_t")")" "$sft_t"
+    done_or "teacher-$(short $M7)-tool" eval_new "$M7" tool_use base val "" --with_demo --run_name "teacher-$(short $M7)-tool" ;;
+  eval_one) shift; eval_new "$@" ;;   # one evaluation with the current EVAL_GPUS (used by final_b)
   e1_sft)
     train_sft "$M7" science "$N_SCI"
     best_epoch_eval "$M7" science sft "$CK/sft_science_$(short $M7)_n${N_SCI}_s${SEED}" ;;

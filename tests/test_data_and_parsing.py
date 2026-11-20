@@ -134,13 +134,14 @@ def test_logits_to_keep_slices_response_positions():
 def test_generate_split_on_oom(monkeypatch):
     """A batch that runs out of GPU memory is retried in halves, keeping the output order."""
     import torch
-    import evaluate as ev
+    import common
 
-    def fake_generate(model, tok, prompts, max_new, do_sample):
+    def fake_generate(model, tok, prompts, max_new, **kw):
         if len(prompts) > 2:
             raise torch.OutOfMemoryError("fake")
         return [{"ids": p} for p in prompts]
 
-    monkeypatch.setattr(ev, "generate_batch", fake_generate)
+    monkeypatch.setattr(common, "generate_batch", fake_generate)
     prompts = [[i] for i in range(7)]
-    assert [o["ids"] for o in ev._generate_split_on_oom(None, None, prompts, 4)] == prompts
+    out = common.generate_batch_split_on_oom(None, None, prompts, 4, do_sample=False)
+    assert [o["ids"] for o in out] == prompts

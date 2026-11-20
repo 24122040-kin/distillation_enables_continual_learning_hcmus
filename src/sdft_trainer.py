@@ -37,7 +37,7 @@ from peft import LoraConfig, get_peft_model
 from transformers import get_cosine_schedule_with_warmup
 import wandb
 
-from common import chat_ids, generate_batch, load_model_and_tokenizer, set_seed
+from common import chat_ids, generate_batch_split_on_oom, load_model_and_tokenizer, set_seed
 from data_loader import get_dataset, resolve_source
 from prompts import student_context, teacher_context
 
@@ -357,7 +357,7 @@ def train_sdft(args: argparse.Namespace) -> None:
                 tg = time.time()
                 model.eval()
                 _set_active(model, "default", student_params)
-                rollouts = generate_batch(
+                rollouts = generate_batch_split_on_oom(
                     model, tokenizer, prompts, args.max_new_tokens,
                     do_sample=True, temperature=args.temperature, top_p=args.top_p,
                 )

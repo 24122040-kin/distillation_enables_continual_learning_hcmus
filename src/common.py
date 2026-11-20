@@ -192,3 +192,22 @@ def generate_batch(
         ids = row[: cut + 1] if cut is not None else row
         results.append({"ids": ids, "truncated": cut is None})
     return results
+
+
+def generate_batch_split_on_oom(model, tokenizer, prompts, max_new_tokens, **kwargs) -> List[Dict[str, object]]:
+    """:func:`generate_batch`, but a batch that runs out of GPU memory is retried as two halves.
+
+    Long Tool Use prompts can make one rollout/evaluation batch exceed a 16 GB T4 while most
+    batches fit; splitting only those batches keeps the large batch size elsewhere. The retry
+    happens outside the ``except`` block so the failed attempt's tensors are freed first.
+    """
+    try:
+        return generate_batch(model, tokenizer, prompts, max_new_tokens, **kwargs)
+    except torch.OutOfMemoryError:
+        if len(prompts) == 1:
+            raise
+    torch.cuda.empty_cache()
+    half = len(prompts) // 2
+    print(f"CUDA OOM while generating {len(prompts)} sequences, retrying as {half} + {len(prompts) - half}", flush=True)
+    return (generate_batch_split_on_oom(model, tokenizer, prompts[:half], max_new_tokens, **kwargs)
+            + generate_batch_split_on_oom(model, tokenizer, prompts[half:], max_new_tokens, **kwargs))

@@ -32,7 +32,11 @@ from typing import Dict, List, Optional
 import numpy as np
 import torch
 import torch.nn.functional as F
+<<<<<<< Updated upstream
 from torch.utils.checkpoint import checkpoint as grad_checkpoint
+=======
+from torch.utils.checkpoint import checkpoint
+>>>>>>> Stashed changes
 from peft import LoraConfig, get_peft_model
 from transformers import get_cosine_schedule_with_warmup
 import wandb
@@ -47,6 +51,7 @@ LORA_TARGETS = ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", 
 # --------------------------------------------------------------------------- #
 # Core SDFT pieces
 # --------------------------------------------------------------------------- #
+<<<<<<< Updated upstream
 def _chunk_kl(
     s_chunk: torch.Tensor,
     t_chunk: torch.Tensor,
@@ -61,6 +66,17 @@ def _chunk_kl(
     else:
         token_kl = (s_logp.exp() * (s_logp - t_logp)).sum(-1)
     return (token_kl * m_chunk).sum()
+=======
+def _token_kl(student_logits: torch.Tensor, teacher_logits: torch.Tensor, kl_mode: str) -> torch.Tensor:
+    """Per-token analytic KL over the vocabulary, shape (T,), computed in fp32."""
+    s_logp = F.log_softmax(student_logits.float(), dim=-1)
+    t_logp = F.log_softmax(teacher_logits.float(), dim=-1)
+    if kl_mode == "forward":
+        return (t_logp.exp() * (t_logp - s_logp)).sum(-1)
+    if kl_mode == "reverse":
+        return (s_logp.exp() * (s_logp - t_logp)).sum(-1)
+    raise ValueError(f"Unsupported kl_mode: {kl_mode}")
+>>>>>>> Stashed changes
 
 
 def compute_analytic_kl_loss(
@@ -71,6 +87,12 @@ def compute_analytic_kl_loss(
     chunk_size: int = 128,
 ) -> torch.Tensor:
     """Full analytic per-token KL over the vocabulary, averaged over unmasked tokens.
+
+    The vocabulary of Qwen2.5 has 152k entries, so the fp32 intermediates of one long
+    response (T ~ 1000) take several GB. The KL is therefore computed in chunks of
+    ``chunk_size`` tokens under activation checkpointing: only the logits are kept for
+    the backward pass and each chunk's intermediates are recomputed there. The value and
+    the gradient are the same as the unchunked computation.
 
     Parameters
     ----------
@@ -84,7 +106,11 @@ def compute_analytic_kl_loss(
         ``"forward"``: sum_v p_T log(p_T / p_S) (used for the paper's results);
         ``"reverse"``: sum_v p_S log(p_S / p_T) (Eq. 1 / Eq. 2).
     chunk_size : int
+<<<<<<< Updated upstream
         Time-axis chunk size for gradient-checkpointed KL to bound peak VRAM.
+=======
+        Tokens per chunk; 0 disables chunking.
+>>>>>>> Stashed changes
 
     Returns
     -------
@@ -93,6 +119,7 @@ def compute_analytic_kl_loss(
     """
     if kl_mode not in ("forward", "reverse"):
         raise ValueError(f"Unsupported kl_mode: {kl_mode}")
+<<<<<<< Updated upstream
     use_ckpt = student_logits.requires_grad and student_logits.size(0) > chunk_size
     total = student_logits.new_zeros((), dtype=torch.float32)
     for i in range(0, student_logits.size(0), chunk_size):
@@ -104,6 +131,21 @@ def compute_analytic_kl_loss(
         else:
             total = total + _chunk_kl(s_c, t_c, m_c, kl_mode)
     return total / mask.sum().clamp(min=1.0)
+=======
+    T = student_logits.shape[0]
+    if not chunk_size or T <= chunk_size:
+        token_kl = _token_kl(student_logits, teacher_logits, kl_mode)
+    else:
+        parts = []
+        for i in range(0, T, chunk_size):
+            s, t = student_logits[i:i + chunk_size], teacher_logits[i:i + chunk_size]
+            if s.requires_grad:
+                parts.append(checkpoint(_token_kl, s, t, kl_mode, use_reentrant=False))
+            else:
+                parts.append(_token_kl(s, t, kl_mode))
+        token_kl = torch.cat(parts)
+    return (token_kl * mask).sum() / mask.sum().clamp(min=1.0)
+>>>>>>> Stashed changes
 
 
 @torch.no_grad()
@@ -192,19 +234,25 @@ def sdft_example_loss(
     model.eval()
     _set_active(model, "teacher", student_params)
     with torch.no_grad():
+<<<<<<< Updated upstream
         t_logits = model(input_ids=torch.cat([t_prompt, resp])[None]).logits[0]
     t_logits = t_logits[len(t_prompt) - 1: len(t_prompt) - 1 + n].detach().clone()
+=======
+        # Only the last n + 1 positions are projected to the vocabulary (logits_to_keep):
+        # full-sequence logits of a long Tool Use prompt alone exceed a T4's memory.
+        t_logits = model(input_ids=torch.cat([t_prompt, resp])[None], logits_to_keep=n + 1).logits[0, :n]
+    t_logits = t_logits.detach()
+>>>>>>> Stashed changes
 
     # Student log-probs on the same trajectory, conditioned on the task prompt only.
     model.train()
     _set_active(model, "default", student_params)
     s_prompt = torch.tensor(student_prompt, device=device)
-    s_logits = model(input_ids=torch.cat([s_prompt, resp])[None]).logits[0]
-    s_logits = s_logits[len(s_prompt) - 1: len(s_prompt) - 1 + n]
+    s_logits = model(input_ids=torch.cat([s_prompt, resp])[None], logits_to_keep=n + 1).logits[0, :n]
 
     mask = torch.ones(n, device=device)
     mask[: args.artifact_mask_tokens] = 0.0
-    return compute_analytic_kl_loss(s_logits, t_logits, mask, args.kl_mode)
+    return compute_analytic_kl_loss(s_logits, t_logits, mask, args.kl_mode, getattr(args, "kl_chunk", 128))
 
 
 # --------------------------------------------------------------------------- #
@@ -443,6 +491,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--lora_alpha", type=int, default=64)
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--max_hours", type=float, default=None, help="Stop and checkpoint after this many hours")
+    p.add_argument("--kl_chunk", type=int, default=128, help="Tokens per chunk of the vocabulary KL (memory); 0 = no chunking")
     p.add_argument("--save_every", type=int, default=10, help="Optimizer steps between resume checkpoints")
     p.add_argument("--output_dir", default="./checkpoints")
     p.add_argument("--run_name", default=None)

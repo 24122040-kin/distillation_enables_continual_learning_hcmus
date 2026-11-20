@@ -96,11 +96,42 @@ Không cần làm gì thêm.
 
 ---
 
-## NOTEBOOK 2: đánh giá (trưa 20/11)
+## NOTEBOOK 1b: chạy lại SDFT Tool Use (20/11, sau lỗi CUDA OOM)
+
+Notebook 1 đã chạy xong SFT Science 7B, SFT Tool Use 7B và một phần model 3B, nhưng SDFT Tool Use 7B
+chết ở khoảng step 10 vì `CUDA out of memory` (đã sửa trong code) và chưa kịp lưu checkpoint.
+Notebook này chạy lại SDFT Tool Use từ đầu trên GPU 0 (khoảng 10–11 tiếng), đồng thời GPU 1 làm nốt
+model 3B (SDFT 3B và 2 lần đánh giá test).
+
+1. **Create → New Notebook**, đặt tên `sdft-B-tool`. Accelerator `GPU T4 x2`, Internet `On`,
+   tick **Attach** cho `WANDB_API_KEY`.
+2. **Add Input** → **Your Work** → **Notebooks** → chọn `sdft-B-night` → **Add**.
+3. **Ô 1** và **ô 2** giống hệt notebook 1. Dòng `git log` ở ô 2 phải là commit có chữ `CUDA OOM` hoặc mới hơn.
+4. **Ô 3**
+
+   ```python
+   !mkdir -p /kaggle/working/checkpoints
+   !cp -r /kaggle/input/*/checkpoints/* /kaggle/working/checkpoints/
+   !ls /kaggle/working/checkpoints/*
+   ```
+
+5. **Ô 4**
+
+   ```python
+   !N_SCI=352 N_TOOL=528 bash scripts/kaggle_jobs.sh night3
+   ```
+
+6. Chạy thử ô 1, 2, 3. Rồi **Save Version → Save & Run All (Commit) → Save**, bấm **⏻**.
+
+Nếu một GPU lỗi, log chính của notebook sẽ in luôn 40 dòng cuối của log lỗi (không cần chờ notebook xong).
+
+---
+
+## NOTEBOOK 2: đánh giá (khi notebook 1b xong, sáng 21/11)
 
 ### Bước 1. Kiểm tra notebook 1 đã xong
 
-Kaggle → notebook `sdft-B-night` → tab **Output** → mở thư mục `checkpoints`. Phải có:
+Mở tab **Output** → thư mục `checkpoints` của `sdft-B-tool` (thư mục `sdft_tool_use_...`) và của `sdft-B-night` (hai thư mục `sft_...`). Phải có:
 
 - `sdft_tool_use_Qwen2.5-7B-Instruct_n528_ema0.01_forward_s42`, bên trong có `epoch1`, `epoch2` và file `DONE`
 - `sft_science_Qwen2.5-7B-Instruct_n352_s42`, bên trong có `epoch1`
@@ -113,7 +144,7 @@ Nếu thư mục `sdft_tool_use_...` **không có `DONE`**, xem dòng chú thíc
 1. **Create → New Notebook**, đặt tên `sdft-B-day2`.
 2. **Session options:** Accelerator `GPU T4 x2`, Internet `On`.
 3. **Add-ons → Secrets:** tick **Attach** cho `WANDB_API_KEY` (secret đã có sẵn từ notebook 1).
-4. Panel bên phải → **Add Input** → **Your Work** → **Notebooks** → chọn `sdft-B-night` → **Add**.
+4. Panel bên phải → **Add Input** → **Your Work** → **Notebooks** → chọn `sdft-B-night` → **Add**; làm lại với `sdft-B-tool` (checkpoint SDFT Tool Use nằm ở notebook 1b).
 5. Xóa ô code mẫu.
 
 ### Bước 3. Tạo 4 ô code, copy nguyên văn

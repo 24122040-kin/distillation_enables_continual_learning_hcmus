@@ -159,6 +159,10 @@ def main() -> None:
         from peft import PeftModel
 
         model = PeftModel.from_pretrained(model, args.checkpoint_dir)
+        if args.quant_bits == 16:
+            # Fold the LoRA weights into the base weights: same outputs, no per-layer adapter
+            # matmuls during decoding (much faster greedy generation on T4).
+            model = model.merge_and_unload()
     model.eval()
 
     tag = "teacher" if args.with_demo else args.method

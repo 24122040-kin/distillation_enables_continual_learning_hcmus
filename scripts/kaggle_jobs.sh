@@ -16,6 +16,7 @@
 #   A night : e1_sdft            B night : night2 (GPU0 e2_sdft | GPU1 SFT x2 + E3 3B)
 #   A day 2 : day2_a (SDFT Science eval)   B day 2 : day2_b (SDFT Tool + SFT x2 + Base evals)
 #   B night 2 (optional): M_E3=Qwen/Qwen2.5-1.5B-Instruct e3_small
+#   B re-run (20/11, after the night2 CUDA OOM): night3 (GPU0 e2_sdft from scratch | GPU1 rest of E3 3B)
 #
 # Pilot on Kaggle T4 (19/11): 50.6 s/example Science, 33.4 s/example Tool Use -> N_SCI=352, N_TOOL=528.
 # Sub-sample sizes come from the pilot: N = 10 h * 3600 / (2 epochs * seconds per example).
@@ -45,8 +46,15 @@ export WANDB_PROJECT=${WANDB_PROJECT:-sdft-continual-learning}
 HF_DATASET_DEFAULT="Baokin/sdft-official-data"
 export SDFT_HF_DATASET=${SDFT_HF_DATASET:-$HF_DATASET_DEFAULT}
 export TOKENIZERS_PARALLELISM=false
+export PYTORCH_CUDA_ALLOC_CONF=${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}
 
 short() { basename "$1"; }
+# Wait for two background jobs; on failure print the end of the job's log (traceback) right away.
+wait_both() {  # pid0 log0 pid1 log1
+  wait "$1" || { echo "!!! GPU0 job exited with an error, see $2" | tee -a "$EV/FAILED.txt"; tail -n 40 "$2"; }
+  wait "$3" || { echo "!!! GPU1 job exited with an error or timed out, see $4" | tee -a "$EV/FAILED.txt"; tail -n 40 "$4"; }
+  tail -n 5 "$2" "$4"
+}
 # Run a step; on failure log it and continue, so one broken evaluation does not stop a long job.
 try() { "$@" || echo "!!! FAILED (exit $?): $*" | tee -a "$EV/FAILED.txt"; }
 
@@ -148,9 +156,32 @@ PY
       TRAIN_GPUS=1 EVAL_GPUS=1 MAX_HOURS=6 M_E3='$M3' bash '$me' e3_small" > "$EV/gpu1_chain.log" 2>&1 &
     p1=$!
     echo "started: GPU0 pid $p0 (e2_sdft), GPU1 pid $p1 (SFT + E3); logs in $EV/gpu*.log"
-    wait "$p0" || echo "!!! GPU0 job exited with an error, see $EV/gpu0_e2_sdft.log" | tee -a "$EV/FAILED.txt"
-    wait "$p1" || echo "!!! GPU1 chain exited with an error or timed out, see $EV/gpu1_chain.log" | tee -a "$EV/FAILED.txt"
-    tail -n 5 "$EV/gpu0_e2_sdft.log" "$EV/gpu1_chain.log" ;;
+    wait_both "$p0" "$EV/gpu0_e2_sdft.log" "$p1" "$EV/gpu1_chain.log" ;;
+  night3)
+    # Re-run of 7B SDFT Tool Use after the CUDA OOM of night2 (fixed in sdft_trainer.py), plus the
+    # unfinished part of E3 (3B) on the otherwise idle GPU 1. Needs the night2 checkpoints copied
+    # to $CK first (3B SFT adapter). Resumes by itself if $CK already holds a resume checkpoint.
+    python -c "from huggingface_hub import snapshot_download as d; d('$M7'); d('$M3')"
+    me=$(readlink -f "$0")
+    MAX_HOURS=${MAX_HOURS:-10.5} TRAIN_GPUS=0 bash "$me" e2_sdft > "$EV/gpu0_e2_sdft.log" 2>&1 &
+    p0=$!
+    ${TIMEOUT_BIN:-timeout} "${GPU1_SECONDS:-39000}" bash -c "
+      TRAIN_GPUS=1 EVAL_GPUS=1 MAX_HOURS=6 M_E3='$M3' bash '$me' e3_rest" > "$EV/gpu1_e3_rest.log" 2>&1 &
+    p1=$!
+    echo "started: GPU0 pid $p0 (e2_sdft), GPU1 pid $p1 (E3 rest); logs in $EV/gpu*.log"
+    wait_both "$p0" "$EV/gpu0_e2_sdft.log" "$p1" "$EV/gpu1_e3_rest.log" ;;
+  e3_rest)
+    # E3 after base / teacher / SFT training are done: SDFT training first (checkpoint is the
+    # expensive part), then the two test evaluations. Skips evaluations whose json exists.
+    for m in ${M_E3:-"$M3"}; do
+      sd="$CK/sdft_science_$(short $m)_n${N_SCI}_ema0.01_forward_s${SEED}"
+      [ -f "$sd/DONE" ] || try train_sdft "$m" science "$N_SCI"
+      for d in "$CK/sft_science_$(short $m)_n${N_SCI}_s${SEED}/epoch1" "$sd/epoch2"; do
+        meth=sft; case "$d" in *sdft_*) meth=sdft ;; esac
+        r="test-$(short "$(dirname "$d")")-$(short "$d")"
+        [ -f "$EV/$r.json" ] || try eval_new "$m" science "$meth" test "$d" --run_name "$r"
+      done
+    done ;;
   check_data)
     # HF mirror must be byte-identical (after formatting) to the pinned GitHub copy.
     python - <<'PY2'

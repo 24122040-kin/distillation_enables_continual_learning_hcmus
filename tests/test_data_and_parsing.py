@@ -92,3 +92,40 @@ def test_tool_metric_rejects_wrong_args(tool):
     gold = test[0]["answer"]
     wrong = f"Action: {gold[0]['action']}\nAction Input: {{\"bogus\": 1}}"
     assert not tool_match_merged(wrong, gold)
+
+
+def test_chunked_kl_matches_unchunked():
+    """Chunked + checkpointed KL gives the same loss and gradient as the plain one."""
+    import torch
+    from sdft_trainer import compute_analytic_kl_loss
+    torch.manual_seed(0)
+    T, V = 37, 50
+    t = torch.randn(T, V)
+    mask = torch.ones(T)
+    mask[:3] = 0
+    for mode in ("forward", "reverse"):
+        s1 = torch.randn(T, V, requires_grad=True)
+        s2 = s1.detach().clone().requires_grad_(True)
+        l1 = compute_analytic_kl_loss(s1, t, mask, mode, chunk_size=0)
+        l2 = compute_analytic_kl_loss(s2, t, mask, mode, chunk_size=8)
+        l1.backward()
+        l2.backward()
+        assert torch.allclose(l1, l2, atol=1e-6)
+        assert torch.allclose(s1.grad, s2.grad, atol=1e-6)
+
+
+def test_logits_to_keep_slices_response_positions():
+    """logits_to_keep=n+1, [:n] equals slicing full logits at the response positions."""
+    import torch
+    from transformers import Qwen2Config, Qwen2ForCausalLM
+    torch.manual_seed(0)
+    cfg = Qwen2Config(vocab_size=64, hidden_size=32, intermediate_size=64, num_hidden_layers=2,
+                      num_attention_heads=4, num_key_value_heads=2)
+    model = Qwen2ForCausalLM(cfg).eval()
+    prompt, resp = torch.randint(0, 64, (11,)), torch.randint(0, 64, (6,))
+    ids = torch.cat([prompt, resp])[None]
+    n = len(resp)
+    with torch.no_grad():
+        full = model(input_ids=ids).logits[0][len(prompt) - 1: len(prompt) - 1 + n]
+        kept = model(input_ids=ids, logits_to_keep=n + 1).logits[0, :n]
+    assert torch.allclose(full, kept, atol=1e-5)

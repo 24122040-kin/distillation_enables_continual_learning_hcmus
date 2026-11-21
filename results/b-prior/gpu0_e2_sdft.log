@@ -1,0 +1,117 @@
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+I0000 00:00:1795163245.777814     397 cudart_stub.cc:31] Could not find cuda drivers on your machine, GPU will not be used.
+Generating train split:   0%|          | 0/4046 [00:00<?, ? examples/s]Generating train split: 100%|██████████| 4046/4046 [00:00<00:00, 56197.03 examples/s]
+Generating test split:   0%|          | 0/97 [00:00<?, ? examples/s]Generating test split: 100%|██████████| 97/97 [00:00<00:00, 20155.93 examples/s]
+`torch_dtype` is deprecated! Use `dtype` instead!
+Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:  25%|██▌       | 1/4 [00:09<00:29,  9.94s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:27<00:28, 14.47s/it]Loading checkpoint shards:  75%|███████▌  | 3/4 [00:45<00:15, 15.90s/it]Loading checkpoint shards: 100%|██████████| 4/4 [01:00<00:00, 15.81s/it]Loading checkpoint shards: 100%|██████████| 4/4 [01:00<00:00, 15.21s/it]
+wandb: [wandb.login()] Loaded credentials for https://api.wandb.ai from WANDB_API_KEY.
+wandb: Currently logged in as: baokin91ltri (baokin91ltri-tr-ng-i-h-c-khoa-h-c-t-nhi-n-hqg-hcm) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: Using an existing wandb-core service via WANDB_SERVICE.
+wandb: Tracking run with wandb version 0.28.1
+wandb: Run data is saved locally in /kaggle/working/distillation_enables_continual_learning_hcmus/wandb/run-20261120_082845-8a0c196e
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run sdft_tool_use_Qwen2.5-7B-Instruct_n528_ema0.01_forward_s42
+wandb: ⭐️ View project at https://wandb.ai/baokin91ltri-tr-ng-i-h-c-khoa-h-c-t-nhi-n-hqg-hcm/sdft-continual-learning
+wandb: 🚀 View run at https://wandb.ai/baokin91ltri-tr-ng-i-h-c-khoa-h-c-t-nhi-n-hqg-hcm/sdft-continual-learning/runs/8a0c196e
+`use_cache=True` is incompatible with gradient checkpointing. Setting `use_cache=False`.
+/usr/local/lib/python3.13/dist-packages/torch/_dynamo/eval_frame.py:1263: UserWarning: torch.utils.checkpoint: the use_reentrant parameter should be passed explicitly. Starting in PyTorch 2.9, calling checkpoint without use_reentrant will raise an exception. use_reentrant=False is recommended, but if you need to preserve the current default behavior, you can pass use_reentrant=True. Refer to docs for more details on the differences between the two variants.
+  return fn(*args, **kwargs)
+[ep 1 step 1/33] kl=0.2554 len=68 gen=237s train=364s
+[ep 1 step 2/33] kl=0.4372 len=60 gen=206s train=385s
+[ep 1 step 3/33] kl=0.3341 len=60 gen=200s train=349s
+[ep 1 step 4/33] kl=0.3088 len=71 gen=223s train=337s
+[ep 1 step 5/33] kl=0.1644 len=136 gen=537s train=413s
+[ep 1 step 6/33] kl=0.1694 len=183 gen=711s train=440s
+[ep 1 step 7/33] kl=0.1063 len=348 gen=946s train=566s
+[ep 1 step 8/33] kl=0.1222 len=313 gen=875s train=508s
+[ep 1 step 9/33] kl=0.1223 len=284 gen=1046s train=470s
+[ep 1 step 10/33] kl=0.1120 len=228 gen=797s train=473s
+[ep 1 step 11/33] kl=0.1692 len=106 gen=406s train=407s
+[ep 1 step 12/33] kl=0.1358 len=126 gen=447s train=380s
+[ep 1 step 13/33] kl=0.1227 len=121 gen=444s train=395s
+[ep 1 step 14/33] kl=0.0955 len=96 gen=319s train=348s
+[ep 1 step 15/33] kl=0.0936 len=131 gen=481s train=373s
+Traceback (most recent call last):
+  File "/kaggle/working/distillation_enables_continual_learning_hcmus/src/sdft_trainer.py", line 456, in <module>
+    train_sdft(build_parser().parse_args())
+    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/kaggle/working/distillation_enables_continual_learning_hcmus/src/sdft_trainer.py", line 360, in train_sdft
+    rollouts = generate_batch(
+        model, tokenizer, prompts, args.max_new_tokens,
+        do_sample=True, temperature=args.temperature, top_p=args.top_p,
+    )
+  File "/usr/local/lib/python3.13/dist-packages/torch/utils/_contextlib.py", line 124, in decorate_context
+    return func(*args, **kwargs)
+  File "/kaggle/working/distillation_enables_continual_learning_hcmus/src/common.py", line 188, in generate_batch
+    out = model.generate(input_ids=input_ids.to(device), attention_mask=attn.to(device), **gen_kwargs)
+  File "/usr/local/lib/python3.13/dist-packages/peft/peft_model.py", line 1973, in generate
+    outputs = self.base_model.generate(*args, **kwargs)
+  File "/usr/local/lib/python3.13/dist-packages/torch/utils/_contextlib.py", line 124, in decorate_context
+    return func(*args, **kwargs)
+  File "/usr/local/lib/python3.13/dist-packages/transformers/generation/utils.py", line 2564, in generate
+    result = decoding_method(
+        self,
+    ...<5 lines>...
+        **model_kwargs,
+    )
+  File "/usr/local/lib/python3.13/dist-packages/transformers/generation/utils.py", line 2784, in _sample
+    outputs = self(**model_inputs, return_dict=True)
+  File "/usr/local/lib/python3.13/dist-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/dist-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/usr/local/lib/python3.13/dist-packages/transformers/utils/generic.py", line 918, in wrapper
+    output = func(self, *args, **kwargs)
+  File "/usr/local/lib/python3.13/dist-packages/transformers/models/qwen2/modeling_qwen2.py", line 449, in forward
+    outputs: BaseModelOutputWithPast = self.model(
+                                       ~~~~~~~~~~^
+        input_ids=input_ids,
+        ^^^^^^^^^^^^^^^^^^^^
+    ...<6 lines>...
+        **kwargs,
+        ^^^^^^^^^
+    )
+    ^
+  File "/usr/local/lib/python3.13/dist-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/dist-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/usr/local/lib/python3.13/dist-packages/transformers/utils/generic.py", line 1064, in wrapper
+    outputs = func(self, *args, **kwargs)
+  File "/usr/local/lib/python3.13/dist-packages/transformers/models/qwen2/modeling_qwen2.py", line 384, in forward
+    hidden_states = decoder_layer(
+        hidden_states,
+    ...<6 lines>...
+        **kwargs,
+    )
+  File "/usr/local/lib/python3.13/dist-packages/transformers/modeling_layers.py", line 94, in __call__
+    return super().__call__(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/dist-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/dist-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/usr/local/lib/python3.13/dist-packages/transformers/utils/deprecation.py", line 172, in wrapped_func
+    return func(*args, **kwargs)
+  File "/usr/local/lib/python3.13/dist-packages/transformers/models/qwen2/modeling_qwen2.py", line 249, in forward
+    hidden_states = self.mlp(hidden_states)
+  File "/usr/local/lib/python3.13/dist-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/dist-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/usr/local/lib/python3.13/dist-packages/transformers/models/qwen2/modeling_qwen2.py", line 46, in forward
+    down_proj = self.down_proj(self.act_fn(self.gate_proj(x)) * self.up_proj(x))
+                                                                ~~~~~~~~~~~~^^^
+  File "/usr/local/lib/python3.13/dist-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/dist-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/usr/local/lib/python3.13/dist-packages/peft/tuners/lora/bnb.py", line 502, in forward
+    output = lora_B(lora_A(dropout(x))) * scaling
+             ~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~
+torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 880.00 MiB. GPU 0 has a total capacity of 14.56 GiB of which 846.81 MiB is free. Including non-PyTorch memory, this process has 13.73 GiB memory in use. Of the allocated memory 13.29 GiB is allocated by PyTorch, and 312.53 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://docs.pytorch.org/docs/stable/notes/cuda.html#optimizing-memory-usage-with-pytorch-cuda-alloc-conf)

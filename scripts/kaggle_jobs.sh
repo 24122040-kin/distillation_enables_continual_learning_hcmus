@@ -289,6 +289,22 @@ PY2
     [ -f "$EV/test-$(short "$sd_t")-epoch1.json" ] || try eval_new "$M7" tool_use sdft test "$sd_t/epoch1" --run_name "test-$(short "$sd_t")-epoch1"
     compgen -G "$EV/prior/$(short "$sd_t")/*/results_*.json" > /dev/null || compgen -G "$EV/prior/$(short "$sd_t")/results_*.json" > /dev/null \
       || try eval_prior "$M7" "$(short "$sd_t")" "$sd_t/epoch1" ;;
+  sft_sci_2ep)
+    # 21/11 evening: SFT Science 7B with the same 2-epoch budget as SDFT (the main SFT run has 1 epoch), in a
+    # separate folder; best epoch on val (as for SDFT), then the test set. Results go to their own run names.
+    d="$CK/sft2ep"; r="$d/sft_science_$(short $M7)_n${N_SCI}_s${SEED}"
+    python -c "from huggingface_hub import snapshot_download as s; s('$M7')"
+    CUDA_VISIBLE_DEVICES=$TRAIN_GPUS python src/sft_baseline.py --model_name "$M7" --task science --max_train "$N_SCI" \
+      --batch_size "$BS" --seed "$SEED" --output_dir "$d" --epochs 2 "${Q[@]}"
+    best=""; bestacc=-1
+    for e in 1 2; do
+      [ -d "$r/epoch$e" ] || continue
+      try eval_new "$M7" science sft val "$r/epoch$e" --run_name "val-sft2ep-science-7b-epoch$e"
+      acc=$(python -c "import json,sys;print(json.load(open(sys.argv[1]))['metrics']['acc'])" "$EV/val-sft2ep-science-7b-epoch$e.json" 2>/dev/null || echo -1)
+      python -c "import sys;sys.exit(0 if float(sys.argv[1])>float(sys.argv[2]) else 1)" "$acc" "$bestacc" && { best=$e; bestacc=$acc; }
+    done
+    echo "SFT 2-epoch: best epoch on val = $best ($bestacc)"
+    [ -n "$best" ] && try eval_new "$M7" science sft test "$r/epoch$best" --run_name "test-sft2ep-science-7b-epoch$best" ;;
   eval_one) shift; eval_new "$@" ;;   # one evaluation with the current EVAL_GPUS (used by final_b)
   e1_sft)
     train_sft "$M7" science "$N_SCI"

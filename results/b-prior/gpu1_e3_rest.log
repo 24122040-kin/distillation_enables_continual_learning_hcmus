@@ -1,0 +1,191 @@
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+I0000 00:00:1795163245.777817     401 cudart_stub.cc:31] Could not find cuda drivers on your machine, GPU will not be used.
+Generating train split:   0%|          | 0/2674 [00:00<?, ? examples/s]Generating train split: 100%|██████████| 2674/2674 [00:00<00:00, 22694.30 examples/s]Generating train split: 100%|██████████| 2674/2674 [00:00<00:00, 22110.80 examples/s]
+Generating test split:   0%|          | 0/507 [00:00<?, ? examples/s]Generating test split: 100%|██████████| 507/507 [00:00<00:00, 93798.78 examples/s]
+`torch_dtype` is deprecated! Use `dtype` instead!
+Loading checkpoint shards:   0%|          | 0/2 [00:00<?, ?it/s]Loading checkpoint shards:  50%|█████     | 1/2 [00:05<00:05,  5.99s/it]Loading checkpoint shards: 100%|██████████| 2/2 [00:09<00:00,  4.51s/it]Loading checkpoint shards: 100%|██████████| 2/2 [00:09<00:00,  4.73s/it]
+wandb: [wandb.login()] Loaded credentials for https://api.wandb.ai from WANDB_API_KEY.
+wandb: Currently logged in as: baokin91ltri (baokin91ltri-tr-ng-i-h-c-khoa-h-c-t-nhi-n-hqg-hcm) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: Using an existing wandb-core service via WANDB_SERVICE.
+wandb: Tracking run with wandb version 0.28.1
+wandb: Run data is saved locally in /kaggle/working/distillation_enables_continual_learning_hcmus/wandb/run-20261120_082753-a0d9b8f7
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run sdft_science_Qwen2.5-3B-Instruct_n352_ema0.01_forward_s42
+wandb: ⭐️ View project at https://wandb.ai/baokin91ltri-tr-ng-i-h-c-khoa-h-c-t-nhi-n-hqg-hcm/sdft-continual-learning
+wandb: 🚀 View run at https://wandb.ai/baokin91ltri-tr-ng-i-h-c-khoa-h-c-t-nhi-n-hqg-hcm/sdft-continual-learning/runs/a0d9b8f7
+`use_cache=True` is incompatible with gradient checkpointing. Setting `use_cache=False`.
+/usr/local/lib/python3.13/dist-packages/torch/_dynamo/eval_frame.py:1263: UserWarning: torch.utils.checkpoint: the use_reentrant parameter should be passed explicitly. Starting in PyTorch 2.9, calling checkpoint without use_reentrant will raise an exception. use_reentrant=False is recommended, but if you need to preserve the current default behavior, you can pass use_reentrant=True. Refer to docs for more details on the differences between the two variants.
+  return fn(*args, **kwargs)
+[ep 1 step 1/22] kl=0.2001 len=363 gen=353s train=167s
+[ep 1 step 2/22] kl=0.1978 len=344 gen=343s train=136s
+[ep 1 step 3/22] kl=0.1834 len=385 gen=287s train=160s
+[ep 1 step 4/22] kl=0.1917 len=394 gen=408s train=156s
+[ep 1 step 5/22] kl=0.1398 len=472 gen=372s train=177s
+[ep 1 step 6/22] kl=0.2654 len=309 gen=348s train=133s
+[ep 1 step 7/22] kl=0.5088 len=154 gen=321s train=112s
+[ep 1 step 8/22] kl=0.1388 len=464 gen=386s train=174s
+[ep 1 step 9/22] kl=0.1332 len=449 gen=420s train=179s
+[ep 1 step 10/22] kl=0.1160 len=473 gen=366s train=178s
+[ep 1 step 11/22] kl=0.1379 len=448 gen=351s train=169s
+[ep 1 step 12/22] kl=0.1663 len=380 gen=350s train=155s
+[ep 1 step 13/22] kl=0.1504 len=357 gen=308s train=152s
+[ep 1 step 14/22] kl=0.1644 len=347 gen=319s train=154s
+[ep 1 step 15/22] kl=0.1209 len=409 gen=362s train=159s
+[ep 1 step 16/22] kl=0.1469 len=377 gen=271s train=156s
+[ep 1 step 17/22] kl=0.1005 len=458 gen=432s train=180s
+[ep 1 step 18/22] kl=0.1500 len=391 gen=322s train=165s
+[ep 1 step 19/22] kl=0.1339 len=379 gen=307s train=160s
+[ep 1 step 20/22] kl=0.1010 len=385 gen=335s train=159s
+[ep 1 step 21/22] kl=0.1117 len=450 gen=398s train=186s
+[ep 1 step 22/22] kl=0.1033 len=399 gen=377s train=151s
+[ep 2 step 1/22] kl=0.1091 len=439 gen=387s train=166s
+[ep 2 step 2/22] kl=0.1304 len=396 gen=377s train=163s
+[ep 2 step 3/22] kl=0.1142 len=427 gen=419s train=169s
+[ep 2 step 4/22] kl=0.1290 len=408 gen=362s train=170s
+[ep 2 step 5/22] kl=0.1038 len=402 gen=393s train=162s
+[ep 2 step 6/22] kl=0.0905 len=510 gen=480s train=191s
+[ep 2 step 7/22] kl=0.1061 len=413 gen=363s train=160s
+[ep 2 step 8/22] kl=0.1186 len=420 gen=344s train=170s
+[ep 2 step 9/22] kl=0.1037 len=510 gen=521s train=194s
+[ep 2 step 10/22] kl=0.1177 len=428 gen=366s train=175s
+[ep 2 step 11/22] kl=0.1091 len=454 gen=403s train=181s
+[ep 2 step 12/22] kl=0.1041 len=440 gen=390s train=171s
+[ep 2 step 13/22] kl=0.0980 len=396 gen=363s train=164s
+[ep 2 step 14/22] kl=0.1265 len=388 gen=317s train=169s
+[ep 2 step 15/22] kl=0.1134 len=402 gen=375s train=164s
+[ep 2 step 16/22] kl=0.0963 len=422 gen=411s train=171s
+[ep 2 step 17/22] kl=0.1196 len=386 gen=302s train=162s
+[ep 2 step 18/22] kl=0.0957 len=450 gen=382s train=179s
+[ep 2 step 19/22] kl=0.0962 len=425 gen=360s train=168s
+wandb: updating run metadata
+wandb: uploading history steps 39-40, summary, console lines 43-44
+wandb: 
+wandb: Run history:
+wandb:                  epoch ▁▁▁▂▂▂▂▂▂▃▃▃▃▃▃▄▄▄▄▄▄▅▅▅▅▅▆▆▆▆▆▆▇▇▇▇▇▇██
+wandb:         time/elapsed_h ▁▁▁▁▂▂▂▂▂▃▃▃▃▃▃▃▄▄▄▄▄▅▅▅▅▅▅▆▆▆▆▆▇▇▇▇▇▇██
+wandb:           time/gen_sec ▃▃▁▅▄▃▂▄▅▄▃▃▂▂▄▁▅▂▂▃▅▄▄▄▅▄▄▇▄▃█▄▅▄▄▂▄▅▂▃
+wandb:          time/step_sec ▃▂▁▄▄▂▁▄▅▄▃▃▂▂▃▁▆▂▂▃▅▃▄▄▅▄▄▇▃▃█▄▅▄▃▂▄▅▂▃
+wandb:         time/train_sec ▆▃▅▅▇▃▁▆▇▇▆▅▄▅▅▅▇▆▅▅▇▄▆▅▆▆▅█▅▆█▆▇▆▅▆▅▆▅▆
+wandb:        train/grad_norm ▁▁▁▁▁▃█▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:          train/kl_loss ▃▃▃▃▂▄█▂▂▁▂▂▂▂▂▂▁▂▂▁▁▁▁▂▁▂▁▁▁▁▁▁▁▁▁▂▁▁▁▁
+wandb:               train/lr ▂▂▃▄▄▅▆▇▇██████▇▇▇▇▇▆▆▆▅▅▅▄▄▄▃▃▃▃▂▂▂▂▁▁▁
+wandb: train/resp_tokens_mean ▅▅▆▆▇▄▁▇▇▇▇▅▅▅▆▅▇▆▅▆▇▆▇▆▆▆▆█▆▆█▆▇▇▆▆▆▆▆▆
+wandb:          train/skipped ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:                     +1 ...
+wandb: 
+wandb: Run summary:
+wandb:                  epoch 1.86364
+wandb:         time/elapsed_h 6.06522
+wandb:           time/gen_sec 359.84504
+wandb:          time/step_sec 527.58246
+wandb:         time/train_sec 167.69023
+wandb:        train/grad_norm 0.13122
+wandb:          train/kl_loss 0.09615
+wandb:               train/lr 0.0
+wandb: train/resp_tokens_mean 425.1875
+wandb:          train/skipped 0
+wandb:                     +1 ...
+wandb: 
+wandb: 🚀 View run sdft_science_Qwen2.5-3B-Instruct_n352_ema0.01_forward_s42 at: https://wandb.ai/baokin91ltri-tr-ng-i-h-c-khoa-h-c-t-nhi-n-hqg-hcm/sdft-continual-learning/runs/a0d9b8f7
+wandb: ⭐️ View project at: https://wandb.ai/baokin91ltri-tr-ng-i-h-c-khoa-h-c-t-nhi-n-hqg-hcm/sdft-continual-learning
+wandb: Synced 5 W&B file(s), 0 media file(s), 0 artifact file(s) and 0 other file(s)
+wandb: Find logs at: ./wandb/run-20261120_082753-a0d9b8f7/logs
+Time budget of 6.0 h reached; re-run the same command to resume.
+`torch_dtype` is deprecated! Use `dtype` instead!
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+I0000 00:00:1795185131.266479     534 cudart_stub.cc:31] Could not find cuda drivers on your machine, GPU will not be used.
+Loading checkpoint shards:   0%|          | 0/2 [00:00<?, ?it/s]Loading checkpoint shards:  50%|█████     | 1/2 [00:01<00:01,  1.26s/it]Loading checkpoint shards: 100%|██████████| 2/2 [00:02<00:00,  1.25s/it]Loading checkpoint shards: 100%|██████████| 2/2 [00:02<00:00,  1.25s/it]
+wandb: [wandb.login()] Loaded credentials for https://api.wandb.ai from WANDB_API_KEY.
+wandb: Currently logged in as: baokin91ltri (baokin91ltri-tr-ng-i-h-c-khoa-h-c-t-nhi-n-hqg-hcm) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: Using an existing wandb-core service via WANDB_SERVICE.
+wandb: Tracking run with wandb version 0.28.1
+wandb: Run data is saved locally in /kaggle/working/distillation_enables_continual_learning_hcmus/wandb/run-20261120_143219-0oxz9j4b
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run test-sft_science_Qwen2.5-3B-Instruct_n352_s42-epoch1
+wandb: ⭐️ View project at https://wandb.ai/baokin91ltri-tr-ng-i-h-c-khoa-h-c-t-nhi-n-hqg-hcm/sdft-continual-learning
+wandb: 🚀 View run at https://wandb.ai/baokin91ltri-tr-ng-i-h-c-khoa-h-c-t-nhi-n-hqg-hcm/sdft-continual-learning/runs/0oxz9j4b
+eval science:   0%|          | 0/32 [00:00<?, ?it/s]eval science:   3%|▎         | 1/32 [06:00<3:06:23, 360.76s/it]eval science:   6%|▋         | 2/32 [12:43<3:12:36, 385.20s/it]eval science:   9%|▉         | 3/32 [20:00<3:17:37, 408.90s/it]eval science:  12%|█▎        | 4/32 [25:19<2:54:23, 373.70s/it]eval science:  16%|█▌        | 5/32 [29:42<2:30:10, 333.73s/it]eval science:  19%|█▉        | 6/32 [34:03<2:13:55, 309.07s/it]eval science:  22%|██▏       | 7/32 [40:13<2:17:01, 328.84s/it]eval science:  25%|██▌       | 8/32 [47:16<2:23:32, 358.86s/it]eval science:  28%|██▊       | 9/32 [53:48<2:21:32, 369.25s/it]eval science:  31%|███▏      | 10/32 [59:37<2:13:01, 362.81s/it]eval science:  34%|███▍      | 11/32 [1:06:11<2:10:22, 372.50s/it]eval science:  38%|███▊      | 12/32 [1:13:10<2:08:51, 386.56s/it]eval science:  41%|████      | 13/32 [1:17:44<1:51:40, 352.66s/it]eval science:  44%|████▍     | 14/32 [1:24:28<1:50:22, 367.93s/it]eval science:  47%|████▋     | 15/32 [1:28:03<1:31:13, 322.00s/it]eval science:  50%|█████     | 16/32 [1:30:53<1:13:37, 276.12s/it]eval science:  53%|█████▎    | 17/32 [1:34:13<1:03:18, 253.22s/it]eval science:  56%|█████▋    | 18/32 [1:39:04<1:01:45, 264.67s/it]eval science:  59%|█████▉    | 19/32 [1:44:54<1:02:54, 290.32s/it]eval science:  62%|██████▎   | 20/32 [1:49:15<56:18, 281.54s/it]  eval science:  66%|██████▌   | 21/32 [1:54:09<52:18, 285.34s/it]eval science:  69%|██████▉   | 22/32 [2:01:19<54:46, 328.69s/it]eval science:  72%|███████▏  | 23/32 [2:08:14<53:09, 354.43s/it]eval science:  75%|███████▌  | 24/32 [2:11:38<41:14, 309.33s/it]eval science:  78%|███████▊  | 25/32 [2:15:55<34:15, 293.66s/it]eval science:  81%|████████▏ | 26/32 [2:20:34<28:55, 289.28s/it]eval science:  84%|████████▍ | 27/32 [2:27:07<26:42, 320.53s/it]eval science:  88%|████████▊ | 28/32 [2:30:57<19:33, 293.27s/it]eval science:  91%|█████████ | 29/32 [2:36:17<15:03, 301.17s/it]eval science:  94%|█████████▍| 30/32 [2:39:42<09:04, 272.50s/it]eval science:  97%|█████████▋| 31/32 [2:46:10<05:07, 307.00s/it]eval science: 100%|██████████| 32/32 [2:50:28<00:00, 292.41s/it]eval science: 100%|██████████| 32/32 [2:50:28<00:00, 319.65s/it]
+wandb: uploading artifact run-0oxz9j4b-evalsamples-HPO9cQ; updating run metadata
+wandb: uploading artifact run-0oxz9j4b-evalsamples-HPO9cQ
+wandb: uploading media/table/eval/samples_1_b0f532c34a49ef258ecb.table.json; uploading output.log; uploading wandb-summary.json; uploading config.yaml
+wandb: 
+wandb: Run history:
+wandb:                  eval/acc ▁
+wandb: eval/mean_response_tokens ▁
+wandb:                    eval/n ▁
+wandb:        eval/truncated_pct ▁
+wandb:        paper_cmp/delta_pp ▁
+wandb:            paper_cmp/ours ▁
+wandb:           paper_cmp/paper ▁
+wandb:     paper_cmp/rel_dev_pct ▁
+wandb: 
+wandb: Run summary:
+wandb:                  eval/acc 34.714
+wandb: eval/mean_response_tokens 396.47535
+wandb:                    eval/n 507
+wandb:        eval/truncated_pct 2.16963
+wandb:        paper_cmp/delta_pp -31.486
+wandb:            paper_cmp/ours 34.714
+wandb:           paper_cmp/paper 66.2
+wandb:     paper_cmp/rel_dev_pct -47.56193
+wandb: 
+wandb: 🚀 View run test-sft_science_Qwen2.5-3B-Instruct_n352_s42-epoch1 at: https://wandb.ai/baokin91ltri-tr-ng-i-h-c-khoa-h-c-t-nhi-n-hqg-hcm/sdft-continual-learning/runs/0oxz9j4b
+wandb: ⭐️ View project at: https://wandb.ai/baokin91ltri-tr-ng-i-h-c-khoa-h-c-t-nhi-n-hqg-hcm/sdft-continual-learning
+wandb: Synced 5 W&B file(s), 1 media file(s), 2 artifact file(s) and 0 other file(s)
+wandb: Find logs at: ./wandb/run-20261120_143219-0oxz9j4b/logs
+{
+  "metrics": {
+    "acc": 34.714003944773175,
+    "truncated_pct": 2.1696252465483234,
+    "mean_response_tokens": 396.47534516765285,
+    "n": 507
+  },
+  "paper_cmp": {
+    "paper": 66.2,
+    "ours": 34.714003944773175,
+    "delta_pp": -31.485996055226828,
+    "rel_dev_pct": -47.56192757587134
+  }
+}
+`torch_dtype` is deprecated! Use `dtype` instead!
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+I0000 00:00:1795195387.130262     571 cudart_stub.cc:31] Could not find cuda drivers on your machine, GPU will not be used.
+Loading checkpoint shards:   0%|          | 0/2 [00:00<?, ?it/s]Loading checkpoint shards:  50%|█████     | 1/2 [00:01<00:01,  1.13s/it]Loading checkpoint shards: 100%|██████████| 2/2 [00:01<00:00,  1.18it/s]Loading checkpoint shards: 100%|██████████| 2/2 [00:01<00:00,  1.13it/s]
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.13/dist-packages/peft/config.py", line 262, in _get_peft_type
+    config_file = hf_hub_download(
+        model_id,
+        CONFIG_NAME,
+        **hf_hub_download_kwargs,
+    )
+  File "/usr/local/lib/python3.13/dist-packages/huggingface_hub/utils/_validators.py", line 106, in _inner_fn
+    validate_repo_id(arg_value)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/dist-packages/huggingface_hub/utils/_validators.py", line 154, in validate_repo_id
+    raise HFValidationError(
+    ...<2 lines>...
+    )
+huggingface_hub.errors.HFValidationError: Repo id must be in the form 'repo_name' or 'namespace/repo_name': '/kaggle/working/checkpoints/sdft_science_Qwen2.5-3B-Instruct_n352_ema0.01_forward_s42/epoch2'. Use `repo_type` argument if needed.
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/kaggle/working/distillation_enables_continual_learning_hcmus/src/evaluate.py", line 200, in <module>
+    main()
+    ~~~~^^
+  File "/kaggle/working/distillation_enables_continual_learning_hcmus/src/evaluate.py", line 161, in main
+    model = PeftModel.from_pretrained(model, args.checkpoint_dir)
+  File "/usr/local/lib/python3.13/dist-packages/peft/peft_model.py", line 440, in from_pretrained
+    PeftConfig._get_peft_type(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^
+        model_id,
+        ^^^^^^^^^
+    ...<4 lines>...
+        token=kwargs.get("token", None),
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/usr/local/lib/python3.13/dist-packages/peft/config.py", line 268, in _get_peft_type
+    raise ValueError(f"Can't find '{CONFIG_NAME}' at '{model_id}'")
+ValueError: Can't find 'adapter_config.json' at '/kaggle/working/checkpoints/sdft_science_Qwen2.5-3B-Instruct_n352_ema0.01_forward_s42/epoch2'
+!!! FAILED (exit 1): eval_new Qwen/Qwen2.5-3B-Instruct science sdft test /kaggle/working/checkpoints/sdft_science_Qwen2.5-3B-Instruct_n352_ema0.01_forward_s42/epoch2 --run_name test-sdft_science_Qwen2.5-3B-Instruct_n352_ema0.01_forward_s42-epoch2

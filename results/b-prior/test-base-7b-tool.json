@@ -1,0 +1,811 @@
+{
+  "args": {
+    "model_name": "Qwen/Qwen2.5-7B-Instruct",
+    "checkpoint_dir": null,
+    "method": "base",
+    "task": "tool_use",
+    "split": "test",
+    "with_demo": false,
+    "max_new_tokens": 1024,
+    "batch_size": 48,
+    "quant_bits": 16,
+    "max_examples": null,
+    "data_seed": 0,
+    "data_source": "auto",
+    "hf_dataset": null,
+    "seed": 42,
+    "output_dir": "/kaggle/working/eval_results",
+    "run_name": "test-base-7b-tool"
+  },
+  "metrics": {
+    "acc": 41.23711340206186,
+    "acc_strict": 41.23711340206186,
+    "truncated_pct": 0.0,
+    "mean_response_tokens": 68.83505154639175,
+    "n": 97
+  },
+  "paper_cmp": {
+    "paper": 42.9,
+    "ours": 41.23711340206186,
+    "delta_pp": -1.6628865979381402,
+    "rel_dev_pct": -3.8761925359863407
+  },
+  "records": [
+    {
+      "id": "tool_use-test-00000",
+      "response": "Thought: The user wants to see a random axolotl image, so I should use the Axolotl tool to get one.\nAction: getRandomAxolotlImage\nAction Input: {}",
+      "n_tokens": 43,
+      "truncated": false,
+      "acc": 1.0,
+      "acc_strict": 1.0
+    },
+    {
+      "id": "tool_use-test-00001",
+      "response": "Thought: The user wants to find axolotl pictures that are wild in color and medium in size. I should use the searchAxolotlImages tool to find these pictures.\nAction: searchAxolotlImages\nAction Input: {\"color\": \"wild\", \"size\": \"medium\"}",
+      "n_tokens": 63,
+      "truncated": false,
+      "acc": 0.0,
+      "acc_strict": 0.0
+    },
+    {
+      "id": "tool_use-test-00002",
+      "response": "Thought: I need to use the getAxolotlFacts tool to get facts about axolotls' habitats.\nAction: getAxolotlFacts\nAction Input: {\"category\": \"habitat\", \"limit\": 3}",
+      "n_tokens": 53,
+      "truncated": false,
+      "acc": 1.0,
+      "acc_strict": 1.0
+    },
+    {
+      "id": "tool_use-test-00003",
+      "response": "Thought: The user wants to know about axolotls' physical characteristics. I should use the getAxolotlFacts tool with the appropriate category parameter to get the relevant information.\n\nAction: getAxolotlFacts\nAction Input: {\"category\": \"physical characteristics\", \"limit\": 5}",
+      "n_tokens": 66,
+      "truncated": false,
+      "acc": 0.0,
+      "acc_strict": 0.0
+    },
+    {
+      "id": "tool_use-test-00004",
+      "response": "Thought: The user wants to see pictures of albino axolotls. I should use the searchAxolotlImages tool to find these images based on the specified color.\nAction: searchAxolotlImages\nAction Input: {\"color\": \"albino\", \"gender\": \"\", \"size\": \"\", \"page\": 1}",
+      "n_tokens": 72,
+      "truncated": false,
+      "acc": 1.0,
+      "acc_strict": 1.0
+    },
+    {
+      "id": "tool_use-test-00005",
+      "response": "Thought: The user wants to know 5 interesting facts about axolotls' physical characteristics and the sources where they can find more information. I should use the getAxolotlFacts tool with the appropriate parameters to get this information.\n\nAction: getAxolotlFacts\nAction Input: {\"category\": \"physical characteristics\", \"limit\": 5}",
+      "n_tokens": 77,
+      "truncated": false,
+      "acc": 1.0,
+      "acc_strict": 1.0
+    },
+    {
+      "id": "tool_use-test-00006",
+      "response": "Thought: I need to use the searchAxolotlImages tool to find axolotl images of different sizes.\nAction: searchAxolotlImages\nAction Input: {\"size\": \"small\", \"page\": 1}\nAction: searchAxolotlImages\nAction Input: {\"size\": \"medium\", \"page\": 1}\nAction: searchAxolotlImages\nAction Input: {\"size\": \"large\", \"page\": 1}",
+      "n_tokens": 98,
+      "truncated": false,
+      "acc": 0.0,
+      "acc_strict": 0.0
+    },
+    {
+      "id": "tool_use-test-00007",
+      "response": "Thought: The user wants to find images of axolotls with different colors, particularly the more unusual ones. I should use the searchAxolotlImages tool to find these images based on color.\nAction: searchAxolotlImages\nAction Input: {\"color\": \"wild\", \"gender\": \"\", \"size\": \"\", \"page\": 1}",
+      "n_tokens": 75,
+      "truncated": false,
+      "acc": 0.0,
+      "acc_strict": 0.0
+    },
+    {
+      "id": "tool_use-test-00008",
+      "response": "Thought: I need to get an interesting fact about axolotls, preferably from the 'habits' or 'physical characteristics' categories, to make it unique and engaging.\nAction: getAxolotlFacts\nAction Input: {\"category\": \"habits\", \"limit\": 5}",
+      "n_tokens": 63,
+      "truncated": false,
+      "acc": 0.0,
+      "acc_strict": 0.0
+    },
+    {
+      "id": "tool_use-test-00009",
+      "response": "Thought: To find a comparison between male and female axolotls, I should use the searchAxolotlImages tool with parameters that include gender. Since the user did not specify a color variety, I will choose a common one like \"wild\" for the search.\nAction: searchAxolotlImages\nAction Input: {\"color\": \"wild\", \"gender\": \"male\", \"size\": \"medium\", \"page\": 1}",
+      "n_tokens": 93,
+      "truncated": false,
+      "acc": 0.0,
+      "acc_strict": 0.0
+    },
+    {
+      "id": "tool_use-test-00010",
+      "response": "Thought: I need to use the searchAnime function to find anime that match the criteria provided by the user.\nAction: searchAnime\nAction Input: {\"query\": \"mystery action\", \"filters\": {\"releaseYear\": 2020, \"rating\": 4}}",
+      "n_tokens": 58,
+      "truncated": false,
+      "acc": 0.0,
+      "acc_strict": 0.0
+    },
+    {
+      "id": "tool_use-test-00011",
+      "response": "Thought: I need to use the AniAPI to get the details of the anime with the given ID.\nAction: getAnimeDetails\nAction Input: {\"animeId\": 123456}",
+      "n_tokens": 44,
+      "truncated": false,
+      "acc": 1.0,
+      "acc_strict": 1.0
+    },
+    {
+      "id": "tool_use-test-00012",
+      "response": "Thought: I need to use the AbuseIPDB tool to report the abusive IP address as requested.\nAction: reportAbusiveIP\nAction Input: {\"ip\": \"192.168.1.100\", \"categories\": [\"brute-force\", \"DDoS\"], \"comment\": \"Multiple failed login attempts and DDoS attacks.\"}",
+      "n_tokens": 76,
+      "truncated": false,
+      "acc": 1.0,
+      "acc_strict": 1.0
+    },
+    {
+      "id": "tool_use-test-00013",
+      "response": "Thought: I need to use the checkIPReputation function to get the reputation score and abuse reports for the given IP address.\nAction: checkIPReputation\nAction Input: {\"ip\": \"123.45.67.89\"}",
+      "n_tokens": 54,
+      "truncated": false,
+      "acc": 1.0,
+      "acc_strict": 1.0
+    },
+    {
+      "id": "tool_use-test-00014",
+      "response": "Thought: The user wants a JSON data feed from AbuseIPDB that includes specific categories. I need to use the getPublishedDataFeeds function to achieve this.\nAction: getPublishedDataFeeds\nAction Input: {\"feedType\": \"json\", \"categories\": [\"malware\", \"hacking\"]}",
+      "n_tokens": 63,
+      "truncated": false,
+      "acc": 1.0,
+      "acc_strict": 1.0
+    },
+    {
+      "id": "tool_use-test-00015",
+      "response": "Thought: I need to use the AbuseIPDB tool to report the abusive IP address for spam and phishing activities.\nAction: reportAbusiveIP\nAction Input: {\"ip\": \"200.0.0.25\", \"categories\": [\"spam\", \"phishing\"], \"comment\": \"Sending multiple spam emails and phishing attempts.\"}",
+      "n_tokens": 72,
+      "truncated": false,
+      "acc": 0.0,
+      "acc_strict": 0.0
+    },
+    {
+      "id": "tool_use-test-00016",
+      "response": "Thought: I need to use the AbuseIPDB tool to check the reputation score of the given IP address, considering only the reports within the last 45 days.\nAction: checkIPReputation\nAction Input: {\"ip\": \"168.0.99.1\", \"maxAgeInDays\": 45}",
+      "n_tokens": 70,
+      "truncated": false,
+      "acc": 1.0,
+      "acc_strict": 1.0
+    },
+    {
+      "id": "tool_use-test-00017",
+      "response": "Thought: First, I need to check the reputation score of the IP address 168.0.99.1 using the AbuseIPDB service.\nAction: checkIPReputation\nAction Input: {\"ip\": \"168.0.99.1\"}",
+      "n_tokens": 59,
+      "truncated": false,
+      "acc": 0.0,
+      "acc_strict": 0.0
+    },
+    {
+      "id": "tool_use-test-00018",
+      "response": "Thought: The user wants a unique avatar with a grunge style in PNG format. I should use the Am\u00e9thyste tool to generate this avatar.\nAction: generateAvatar\nAction Input: {\"userId\": \"123456789\", \"style\": \"grunge\", \"format\": \"png\"}",
+      "n_tokens": 68,
+      "truncated": false,
+      "acc": 1.0,
+      "acc_strict": 1.0
+    },
+    {
+      "id": "tool_use-test-00019",
+      "response": "Thought: The user wants a new server icon, so I should use the generateServerIcon function to create it with a minimal style.\nAction: generateServerIcon\nAction Input: {\"serverId\": \"987654321\", \"style\": \"minimal\", \"format\": \"jpg\"}",
+      "n_tokens": 64,
+      "truncated": false,
+      "acc": 1.0,
+      "acc_strict": 1.0
+    },
+    {
+      "id": "tool_use-test-00020",
+      "response": "Thought: To get the list of members for the specified server, I need to use the `listServerMembers` function. However, since I need to exclude the first 10 members, I will call this function twice: once to get the first 50 members, and then again to remove the first 10 from the result.\n\nAction: listServerMembers\nAction Input: {\"serverId\": \"135792468\", \"limit\": 50, \"offset\": 0}",
+      "n_tokens": 108,
+      "truncated": false,
+      "acc": 0.0,
+      "acc_strict": 0.0
+    },
+    {
+      "id": "tool_use-test-00021",
+      "response": "Thought: I need to use the searchUser tool to find the user \"MisterArcade\".\nAction: searchUser\nAction Input: {\"query\": \"MisterArcade\"}",
+      "n_tokens": 38,
+      "truncated": false,
+      "acc": 1.0,
+      "acc_strict": 1.0
+    },
+    {
+      "id": "tool_use-test-00022",
+      "response": "Thought: I should use the generateRandomImage function to create a random image based on the user's preferences.\nAction: generateRandomImage\nAction Input: {\"userId\": \"246813579\", \"category\": \"nature\", \"format\": \"png\"}",
+      "n_tokens": 58,
+      "truncated": false,
+      "acc": 1.0,
+      "acc_strict": 1.0
+    },
+    {
+      "id": "tool_use-test-00023",
+      "response": "Thought: The user wants a new avatar in minimal style in jpg format. I can use the Am\u00e9thyste tool to generate this.\nAction: generateAvatar\nAction Input: {\"userId\": \"321654987\", \"style\": \"minimal\", \"format\": \"jpg\"}",
+      "n_tokens": 64,
+      "truncated": false,
+      "acc": 1.0,
+      "acc_strict": 1.0
+    },
+    {
+      "id": "tool_use-test-00024",
+      "response": "Thought: I need to search for the user \"SolarWinds42\" using the searchUser tool.\nAction: searchUser\nAction Input: {\"query\": \"SolarWinds42\"}",
+      "n_tokens": 41,
+      "truncated": false,
+      "acc": 1.0,
+      "acc_strict": 1.0
+    },
+    {
+      "id": "tool_use-test-00025",
+      "response": "Thought: I need to use the getUserProfile function to retrieve the user profile based on the user ID and access token provided.\nAction: getUserProfile\nAction Input: {\"userId\": \"g-user123\", \"accessToken\": \"abcd1234\"}",
+      "n_tokens": 54,
+      "truncated": false,
+      "acc": 1.0,
+      "acc_strict": 1.0
+    },
+    {
+      "id": "tool_use-test-00026",
+      "response": "Thought: To update the user profile, I need to use the updateUserProfile function. I have the user ID and access token, which are required parameters. The new profile picture URL can be included in the profileData parameter.\nAction: updateUserProfile\nAction Input: {\"userId\": \"g-user123\", \"accessToken\": \"abcd1234\", \"profileData\": {\"picture\": \"https://example.com/new_image.jpg\"}}",
+      "n_tokens": 90,
+      "truncated": false,
+      "acc": 0.0,
+      "acc_strict": 0.0
+    },
+    {
+      "id": "tool_use-test-00027",
+      "response": "Thought: I need to use the assignUserRole function to assign the role to the user.\nAction: assignUserRole\nAction Input: {\"userId\": \"user321\", \"accessToken\": \"abcd1234\", \"roleId\": \"role123\"}",
+      "n_tokens": 55,
+      "truncated": false,
+      "acc": 1.0,
+      "acc_strict": 1.0
+    },
+    {
+      "id": "tool_use-test-00028",
+      "response": "Thought: To list all available roles, I need to use the `listRoles` function and pass the access token as a parameter.\nAction: listRoles\nAction Input: {\"accessToken\": \"abcd1234\"}",
+      "n_tokens": 46,
+      "truncated": false,
+      "acc": 1.0,
+      "acc_strict": 1.0
+    },
+    {
+      "id": "tool_use-test-00029",
+      "response": "Thought: The user wants to delete a role using an access token. I need to call the `deleteRole` function with the appropriate parameters.\nAction: deleteRole\nAction Input: {\"accessToken\": \"abcd1234\", \"roleId\": \"role456\"}",
+      "n_tokens": 57,
+      "truncated": false,
+      "acc": 1.0,
+      "acc_strict": 1.0
+    },
+    {
+      "id": "tool_use-test-00030",
+      "response": "Thought: The user wants to initiate a passwordless authentication process via email. I need to use the appropriate function to send a verification code to the provided email address.\nAction: initiatePasswordlessAuthentication\nAction Input: {\"provider\": \"email\", \"identifier\": \"jane.doe@example.com\"}",
+      "n_tokens": 61,
+      "truncated": false,
+      "acc": 1.0,
+      "acc_strict": 1.0
+    },
+    {
+      "id": "tool_use-test-00031",
+      "response": "Thought: I need to use the initiatePasswordlessAuthentication and verifyPasswordlessAuthentication functions to authenticate the user based on the provided verification code.\nAction: verifyPasswordlessAuthentication\nAction Input: {\"provider\": \"sms\", \"identifier\": \"+1234567890\", \"verificationCode\": \"123456\"}",
+      "n_tokens": 72,
+      "truncated": false,
+      "acc": 0.0,
+      "acc_strict": 0.0
+    },
+    {
+      "id": "tool_use-test-00032",
+      "response": "Thought: I need to verify the user's passwordless authentication using the provided verification code.\nAction: verifyPasswordlessAuthentication\nAction Input: {\"provider\": \"email\", \"identifier\": \"john.doe@gmail.com\", \"verificationCode\": \"456789\"}",
+      "n_tokens": 57,
+      "truncated": false,
+      "acc": 1.0,
+      "acc_strict": 1.0
+    },
+    {
+      "id": "tool_use-test-00033",
+      "response": "Thought: I need to retrieve the current user profile to check if there is a profile picture already. If not, I will update the user profile with the new profile picture URL.\nAction: getUserProfile\nAction Input: {\"userId\": \"g-user123\", \"accessToken\": \"abcd1234\"}",
+      "n_tokens": 65,
+      "truncated": false,
+      "acc": 0.0,
+      "acc_strict": 0.0
+    },
+    {
+      "id": "tool_use-test-00034",
+      "response": "Thought: The user wants a list of holidays in Japan for 2023 with descriptions in English. I should use the Abstract Public Holidays API to get this information.\nAction: getHolidaysByCountry\nAction Input: {\"country\": \"Japan\", \"year\": 2023, \"language\": \"English\"}",
+      "n_tokens": 68,
+      "truncated": false,
+      "acc": 1.0,
+      "acc_strict": 1.0
+    },
+    {
+      "id": "tool_use-test-00035",
+      "response": "Thought: The user wants a list of all countries supported by the service. I should use the `listCountries` method to get this information.\nAction: listCountries\nAction Input: {}",
+      "n_tokens": 39,
+      "truncated": false,
+      "acc": 1.0,
+      "acc_strict": 1.0
+    },
+    {
+      "id": "tool_use-test-00036",
+      "response": "Thought: To provide the list of languages supported by the API for holiday descriptions, I need to use the `listLanguages` method as it retrieves the list of languages supported by the API.\n\nAction: listLanguages\nAction Input: {}",
+      "n_tokens": 48,
+      "truncated": false,
+      "acc": 1.0,
+      "acc_strict": 1.0
+    },
+    {
+      "id": "tool_use-test-00037",
+      "response": "Thought: I need to search for holidays that include the keyword \"Diwali\" to find the relevant information.\nAction: searchHolidays\nAction Input: {\"keywords\": \"Diwali\", \"language\": \"en\"}",
+      "n_tokens": 47,
+      "truncated": false,
+      "acc": 0.0,
+      "acc_strict": 0.0
+    },
+    {
+      "id": "tool_use-test-00038",
+      "response": "Thought: To get the detailed information about Chinese New Year, I need to use the getHolidayDetails function with the appropriate holiday ID and language.\nAction: getHolidayDetails\nAction Input: {\"holidayId\": \"chinese-new-year\", \"language\": \"en\"}",
+      "n_tokens": 55,
+      "truncated": false,
+      "acc": 0.0,
+      "acc_strict": 0.0
+    },
+    {
+      "id": "tool_use-test-00039",
+      "response": "Thought: To find out the list of countries supported by the API, I need to use the `listCountries` method.\n\nAction: listCountries\nAction Input: {}",
+      "n_tokens": 35,
+      "truncated": false,
+      "acc": 1.0,
+      "acc_strict": 1.0
+    },
+    {
+      "id": "tool_use-test-00040",
+      "response": "Thought: The user wants to know the languages supported for holiday descriptions. I need to use the listLanguages tool to get this information.\nAction: listLanguages\nAction Input: {}",
+      "n_tokens": 37,
+      "truncated": false,
+      "acc": 1.0,
+      "acc_strict": 1.0
+    },
+    {
+      "id": "tool_use-test-00041",
+      "response": "Thought: First, I need to convert the 5000 EUR to GBP using the current exchange rate. Then, I will set up an alert for the EUR/GBP exchange rate going above 0.9.\n\nAction: convertCurrency\nAction Input: {\"from\": \"EUR\", \"to\": \"GBP\", \"amount\": 5000}\n\nAction: setPriceAlert\nAction Input: {\"currency_pair\": \"EUR/GBP\", \"price\": 0.9, \"direction\": \"above\"}",
+      "n_tokens": 107,
+      "truncated": false,
+      "acc": 1.0,
+      "acc_strict": 1.0
+    },
+    {
+      "id": "tool_use-test-00042",
+      "response": "Thought: First, I need to retrieve the current exchange rate for USD to CAD using the getExchangeRates function. Then, I will set a price alert for the USD/CAD pair if the rate goes below 1.2 using the setPriceAlert function.\nAction: getExchangeRates\nAction Input: {\"base\": \"USD\", \"symbols\": \"CAD\"}",
+      "n_tokens": 75,
+      "truncated": false,
+      "acc": 0.0,
+      "acc_strict": 0.0
+    },
+    {
+      "id": "tool_use-test-00043",
+      "response": "Thought: The user wants to convert 1000 AUD to NZD and also wants to know the exchange rates for AUD to USD, EUR, and GBP. I can use the 'convertCurrency' function for the conversion and 'getExchangeRates' function to get the exchange rates for AUD to other major currencies.\n\nAction: convertCurrency\nAction Input: {\"from\": \"AUD\", \"to\": \"NZD\", \"amount\": 1000}\n\nAction: getExchangeRates\nAction Input: {\"base\": \"AUD\", \"symbols\": \"USD,EUR,GBP\"}",
+      "n_tokens": 121,
+      "truncated": false,
+      "acc": 0.0,
+      "acc_strict": 0.0
+    },
+    {
+      "id": "tool_use-test-00044",
+      "response": "Thought: First, I need to convert the CHF amount to USD using the convertCurrency function. Then, I will use the setPriceAlert function to set up an alert for the CHF/USD exchange rate going above 1.1.\n\nAction: convertCurrency\nAction Input: {\"from\": \"CHF\", \"to\": \"USD\", \"amount\": 3000}\n\nAction: setPriceAlert\nAction Input: {\"currency_pair\": \"CHF/USD\", \"price\": 1.1, \"direction\": \"above\"}",
+      "n_tokens": 114,
+      "truncated": false,
+      "acc": 1.0,
+      "acc_strict": 1.0
+    },
+    {
+      "id": "tool_use-test-00045",
+      "response": "Thought: The user wants to retrieve current exchange rates for specific currency pairs and set a price alert for one of them. I should use the `getExchangeRates` function to get the exchange rates and the `setPriceAlert` function to set the alert.\n\nAction: getExchangeRates\nAction Input: {\"base\": \"GBP\", \"symbols\": \"USD,EUR,JPY\"}\n\nAction: setPriceAlert\nAction Input: {\"currency_pair\": \"GBP/USD\", \"price\": 1.4, \"direction\": \"above\"}",
+      "n_tokens": 111,
+      "truncated": false,
+      "acc": 1.0,
+      "acc_strict": 1.0
+    },
+    {
+      "id": "tool_use-test-00046",
+      "response": "Thought: The user wants to convert 2000 SEK to NOK and also wants to know the exchange rates for SEK to USD, EUR, and GBP. I can use the `convertCurrency` function to perform the conversion and the `getExchangeRates` function to get the exchange rates for SEK to other major currencies.\n\nAction: convertCurrency\nAction Input: {\"from\": \"SEK\", \"to\": \"NOK\", \"amount\": 2000}\n\nAction: getExchangeRates\nAction Input: {\"base\": \"SEK\", \"symbols\": \"USD,EUR,GBP\"}",
+      "n_tokens": 128,
+      "truncated": false,
+      "acc": 0.0,
+      "acc_strict": 0.0
+    },
+    {
+      "id": "tool_use-test-00047",
+      "response": "Thought: To get the list of available Bible versions, I need to use the getBibleVersionList function with the appropriate language parameter. Since the language is not specified, I will assume it's in English as it's a common default language for such APIs.\n\nAction: getBibleVersionList\nAction Input: {\"language\": \"en\"}",
+      "n_tokens": 71,
+      "truncated": false,
+      "acc": 0.0,
+      "acc_strict": 0.0
+    },
+    {
+      "id": "tool_use-test-00048",
+      "response": "Thought: I need to use the 'getAllVersesFromChapter' function to get all the verses from chapter 3 of the book of Job in the New International Version.\nAction: getAllVersesFromChapter\nAction Input: {\"book\": \"Job\", \"chapter\": 3, \"version\": \"New International Version\", \"language\": \"en\"}",
+      "n_tokens": 73,
+      "truncated": false,
+      "acc": 0.0,
+      "acc_strict": 0.0
+    },
+    {
+      "id": "tool_use-test-00049",
+      "response": "Thought: I need to use the getSpecificVerse function to retrieve the specific verse requested by the user.\nAction: getSpecificVerse\nAction Input: {\"book\": \"Proverbs\", \"chapter\": 18, \"verse\": 24, \"version\": \"NIV\", \"language\": \"en\"}",
+      "n_tokens": 65,
+      "truncated": false,
+      "acc": 0.0,
+      "acc_strict": 0.0
+    },
+    {
+      "id": "tool_use-test-00050",
+      "response": "Thought: I need to use the getSpecificVerse tool to fetch the specific verses requested by the user.\nAction: getSpecificVerse\nAction Input: {\"book\": \"Romans\", \"chapter\": 8, \"verse\": [35, 36, 37, 38, 39], \"version\": \"New American Standard Bible\", \"language\": \"en\"}",
+      "n_tokens": 82,
+      "truncated": false,
+      "acc": 0.0,
+      "acc_strict": 0.0
+    },
+    {
+      "id": "tool_use-test-00051",
+      "response": "Thought: I need to retrieve the specific verse from the requested book, chapter, version, and language.\nAction: getSpecificVerse\nAction Input: {\"book\": \"Revelation\", \"chapter\": 22, \"verse\": 17, \"version\": \"New Living Translation\", \"language\": \"en\"}",
+      "n_tokens": 67,
+      "truncated": false,
+      "acc": 0.0,
+      "acc_strict": 0.0
+    },
+    {
+      "id": "tool_use-test-00052",
+      "response": "Thought: I need to use the getSpecificVerse tool to fetch the specific verses requested by the user.\nAction: getSpecificVerse\nAction Input: {\"book\": \"Ephesians\", \"chapter\": 6, \"verse\": [10, 11, 12, 13, 14, 15, 16, 17, 18], \"version\": \"King James Version\", \"language\": \"en\"}",
+      "n_tokens": 99,
+      "truncated": false,
+      "acc": 0.0,
+      "acc_strict": 0.0
+    },
+    {
+      "id": "tool_use-test-00053",
+      "response": "Thought: I need to retrieve the specific verse from the Book of John, Chapter 3, in two different versions and in two different languages. I will use the 'getSpecificVerse' function for this purpose.\nAction: getSpecificVerse\nAction Input: {\"book\": \"John\", \"chapter\": 3, \"verse\": 16, \"version\": \"King James Version\", \"language\": \"English\"}",
+      "n_tokens": 86,
+      "truncated": false,
+      "acc": 0.0,
+      "acc_strict": 0.0
+    },
+    {
+      "id": "tool_use-test-00054",
+      "response": "Thought: I need to use the searchVerses function to find the verse containing the text \"Love is patient, love is kind\" in the New International Version (NIV) in English.\nAction: searchVerses\nAction Input: {\"text\": \"Love is patient, love is kind\", \"version\": \"NIV\", \"language\": \"English\"}",
+      "n_tokens": 74,
+      "truncated": false,
+      "acc": 0.0,
+      "acc_strict": 0.0
+    },
+    {
+      "id": "tool_use-test-00055",
+      "response": "Thought: To find out the languages in which the Bible is available, I should use the getBibleLanguages tool.\nAction: getBibleLanguages\nAction Input: {}",
+      "n_tokens": 36,
+      "truncated": false,
+      "acc": 1.0,
+      "acc_strict": 1.0
+    },
+    {
+      "id": "tool_use-test-00056",
+      "response": "Thought: I need to use the updateDataSource function to modify the data source with the given ID and new details.\nAction: updateDataSource\nAction Input: {\"sourceId\": 85, \"sourceName\": \"Updated Sales Data\", \"connectionString\": \"postgres://user:password@newhost/dbname\", \"type\": \"postgresql\"}",
+      "n_tokens": 71,
+      "truncated": false,
+      "acc": 0.0,
+      "acc_strict": 0.0
+    },
+    {
+      "id": "tool_use-test-00057",
+      "response": "Thought: The user wants to delete a data source with a specific ID. I need to use the deleteDataSource function to accomplish this task.\nAction: deleteDataSource\nAction Input: {\"sourceId\": 93}",
+      "n_tokens": 45,
+      "truncated": false,
+      "acc": 1.0,
+      "acc_strict": 1.0
+    },
+    {
+      "id": "tool_use-test-00058",
+      "response": "Thought: The user wants to set up daily email notifications. I need to use the `configureAlerts` function with their email and the desired frequency.\n\nAction: configureAlerts\nAction Input: {\"email\": \"john.doe@company.com\", \"frequency\": \"daily\"}",
+      "n_tokens": 58,
+      "truncated": false,
+      "acc": 1.0,
+      "acc_strict": 1.0
+    },
+    {
+      "id": "tool_use-test-00059",
+      "response": "Thought: I need to create a new data source with the given details.\nAction: createDataSource\nAction Input: {\"sourceName\": \"MySQL_DS_ProjectA\", \"connectionString\": \"mysql://user:pass@localhost/db\", \"type\": \"mysql\"}",
+      "n_tokens": 54,
+      "truncated": false,
+      "acc": 1.0,
+      "acc_strict": 1.0
+    },
+    {
+      "id": "tool_use-test-00060",
+      "response": "Thought: First, I need to delete the \"InventoryDB\" data source, then embed the \"Complete Sales Overview\" dashboard into the internal sales application.\nAction: deleteDataSource\nAction Input: {\"sourceId\": 123} # Assuming the sourceId for \"InventoryDB\" is 123\n\nAction: embedDashboard\nAction Input: {\"dashboardId\": 456, \"targetApp\": \"internal_sales_app\"} # Assuming the dashboardId for \"Complete Sales Overview\" is 456",
+      "n_tokens": 107,
+      "truncated": false,
+      "acc": 0.0,
+      "acc_strict": 0.0
+    },
+    {
+      "id": "tool_use-test-00061",
+      "response": "Thought: First, I need to find the ID of the \"SalesDB\" data source so I can update it. Then, I will create a new chart named \"Top Selling Products\" and add it to the \"Sales Overview\" dashboard. Finally, I will update the dashboard name to \"Complete Sales Overview\".\n\nAction: updateDataSource\nAction Input: {\"sourceId\": 123, \"sourceName\": \"SalesDB\", \"connectionString\": \"new_connection_string_value\", \"type\": \"mysql\"}",
+      "n_tokens": 105,
+      "truncated": false,
+      "acc": 0.0,
+      "acc_strict": 0.0
+    },
+    {
+      "id": "tool_use-test-00062",
+      "response": "Thought: The user wants to set up weekly data alerts to their email. I should use the configureAlerts tool for this purpose.\nAction: configureAlerts\nAction Input: {\"email\": \"janedoe@company.com\", \"frequency\": \"weekly\"}",
+      "n_tokens": 54,
+      "truncated": false,
+      "acc": 1.0,
+      "acc_strict": 1.0
+    },
+    {
+      "id": "tool_use-test-00063",
+      "response": "Thought: I need to verify the US address to ensure it meets USPS standards and is deliverable.\nAction: Lob.com\nAction Input: {\"addressLine1\": \"123 Main St\", \"addressLine2\": \"Apt 4B\", \"city\": \"New York\", \"state\": \"NY\", \"zipCode\": \"10001\"}",
+      "n_tokens": 77,
+      "truncated": false,
+      "acc": 0.0,
+      "acc_strict": 0.0
+    },
+    {
+      "id": "tool_use-test-00064",
+      "response": "Thought: I need to use the standardizeUSAddress function to standardize the provided address.\nAction: standardizeUSAddress\nAction Input: {\"addressLine1\": \"456 Elm Street\", \"addressLine2\": \"Suite 789\", \"city\": \"Los Angeles\", \"state\": \"CA\", \"zipCode\": \"90012\"}",
+      "n_tokens": 78,
+      "truncated": false,
+      "acc": 1.0,
+      "acc_strict": 1.0
+    },
+    {
+      "id": "tool_use-test-00065",
+      "response": "Thought: I need to use the Lob.com tools to verify and standardize the provided address.\nAction: verifyUSAddress\nAction Input: {\"addressLine1\": \"987 Oak St\", \"addressLine2\": \"Flr 2\", \"city\": \"San Francisco\", \"state\": \"CA\", \"zipCode\": \"94107\"}",
+      "n_tokens": 76,
+      "truncated": false,
+      "acc": 0.0,
+      "acc_strict": 0.0
+    },
+    {
+      "id": "tool_use-test-00066",
+      "response": "Thought: I need to use the Lob.com tool to verify and standardize the provided address.\nAction: verifyUSAddress\nAction Input: {\"addressLine1\": \"654 Pine Avenue\", \"addressLine2\": \"Unit 3A\", \"city\": \"Chicago\", \"state\": \"IL\", \"zipCode\": \"60601\"}",
+      "n_tokens": 75,
+      "truncated": false,
+      "acc": 0.0,
+      "acc_strict": 0.0
+    },
+    {
+      "id": "tool_use-test-00067",
+      "response": "Thought: The user wants to verify and standardize their new address. I should use the Lob.com tools for this purpose.\nAction: verifyUSAddress\nAction Input: {\"addressLine1\": \"321 Maple Dr\", \"addressLine2\": \"Apt 12C\", \"city\": \"Houston\", \"state\": \"TX\", \"zipCode\": \"77002\"}\n\nAfter receiving the response, I will use the same or a different instance of Lob.com to standardize the address if it was verified successfully.\nAction: standardizeUSAddress\nAction Input: {\"addressLine1\": \"321 Maple Dr\", \"addressLine2\": \"Apt 12C\", \"city\": \"Houston\", \"state\": \"TX\", \"zipCode\": \"77002\"}",
+      "n_tokens": 169,
+      "truncated": false,
+      "acc": 1.0,
+      "acc_strict": 1.0
+    },
+    {
+      "id": "tool_use-test-00068",
+      "response": "Thought: First, I need to retrieve the latest SGD to USD exchange rate, then use that rate to convert 340 SGD to USD.\nAction: getExchangeRates\nAction Input: {\"base\": \"SGD\", \"symbols\": \"USD\"}",
+      "n_tokens": 53,
+      "truncated": false,
+      "acc": 0.0,
+      "acc_strict": 0.0
+    },
+    {
+      "id": "tool_use-test-00069",
+      "response": "Thought: I need to use the getSpecificVerse function to retrieve the specific verse from the New International Version in both English and Spanish.\nAction: getSpecificVerse\nAction Input: {\"book\": \"John\", \"chapter\": 1, \"verse\": 1, \"version\": \"New International Version\", \"language\": \"English\"}",
+      "n_tokens": 69,
+      "truncated": false,
+      "acc": 0.0,
+      "acc_strict": 0.0
+    },
+    {
+      "id": "tool_use-test-00070",
+      "response": "Thought: I need to use the getSpecificVerse function to retrieve the specific verse for both languages.\nAction: getSpecificVerse\nAction Input: {\"book\": \"Philippians\", \"chapter\": 4, \"verse\": 13, \"version\": \"King James Version\", \"language\": \"English\"}",
+      "n_tokens": 65,
+      "truncated": false,
+      "acc": 0.0,
+      "acc_strict": 0.0
+    },
+    {
+      "id": "tool_use-test-00071",
+      "response": "Thought: I need to use the getSpecificVerse function to retrieve the specific verse from the requested book, chapter, and version in both English and Spanish.\nAction: getSpecificVerse\nAction Input: {\"book\": \"Isaiah\", \"chapter\": 40, \"verse\": 31, \"version\": \"New International Version\", \"language\": \"English\"}",
+      "n_tokens": 77,
+      "truncated": false,
+      "acc": 0.0,
+      "acc_strict": 0.0
+    },
+    {
+      "id": "tool_use-test-00072",
+      "response": "Thought: I should use the searchHolidays function to find holidays related to the keyword \"Easter\".\nAction: searchHolidays\nAction Input: {\"keywords\": \"Easter\", \"language\": \"en\"}",
+      "n_tokens": 44,
+      "truncated": false,
+      "acc": 0.0,
+      "acc_strict": 0.0
+    },
+    {
+      "id": "tool_use-test-00073",
+      "response": "Thought: I need to use the searchHolidays function to find holidays that match the keyword \"Passover\".\nAction: searchHolidays\nAction Input: {\"keywords\": \"Passover\", \"language\": \"en\"}",
+      "n_tokens": 45,
+      "truncated": false,
+      "acc": 0.0,
+      "acc_strict": 0.0
+    },
+    {
+      "id": "tool_use-test-00074",
+      "response": "Thought: I need to use the getPublishedDataFeeds function to retrieve the data feed, and I should filter it by the specified categories.\n\nAction: getPublishedDataFeeds\nAction Input: {\"feedType\": \"json\", \"categories\": [\"brute-force\", \"ddos\"]}",
+      "n_tokens": 60,
+      "truncated": false,
+      "acc": 0.0,
+      "acc_strict": 0.0
+    },
+    {
+      "id": "tool_use-test-00075",
+      "response": "Thought: I need to use the getPublishedDataFeeds function to retrieve the published data feed from AbuseIPDB, and I should filter it by the spam and DDoS categories.\n\nAction: getPublishedDataFeeds\nAction Input: {\"feedType\": \"csv\", \"categories\": [\"spam\", \"ddos\"]}",
+      "n_tokens": 67,
+      "truncated": false,
+      "acc": 0.0,
+      "acc_strict": 0.0
+    },
+    {
+      "id": "tool_use-test-00076",
+      "response": "Thought: I need to search for the Discord user \"RetroPilot\" and then list the next 15 members from the specified server after skipping the first 3. However, the `searchUser` tool only searches by username or ID, not by server membership. Therefore, I will use the `listServerMembers` tool with the appropriate parameters to achieve this.\n\nAction: listServerMembers\nAction Input: {\"serverId\": \"919191919\", \"limit\": 15, \"offset\": 3}",
+      "n_tokens": 114,
+      "truncated": false,
+      "acc": 0.0,
+      "acc_strict": 0.0
+    },
+    {
+      "id": "tool_use-test-00077",
+      "response": "Thought: I need to generate a retro server icon and find a specific Discord user. I will start with generating the server icon first as it requires the server ID which is provided.\n\nAction: generateServerIcon\nAction Input: {\"serverId\": \"818181818\", \"style\": \"retro\", \"format\": \"png\"}",
+      "n_tokens": 74,
+      "truncated": false,
+      "acc": 0.0,
+      "acc_strict": 0.0
+    },
+    {
+      "id": "tool_use-test-00078",
+      "response": "Thought: I need to configure alert emails for the specified frequencies and recipients.\nAction: configureAlerts\nAction Input: {\"email\": [\"analytics@example.com\", \"finance@example.com\"], \"frequency\": [\"weekly\", \"monthly\"]}",
+      "n_tokens": 47,
+      "truncated": false,
+      "acc": 0.0,
+      "acc_strict": 0.0
+    },
+    {
+      "id": "tool_use-test-00079",
+      "response": "Thought: I need to configure email notifications for the specified dashboards with the given frequencies.\nAction: configureAlerts\nAction Input: {\"email\": [\"ops-dashboard@example.com\", \"growth-dashboard@example.com\"], \"frequency\": [\"daily\", \"weekly\"]}",
+      "n_tokens": 52,
+      "truncated": false,
+      "acc": 0.0,
+      "acc_strict": 0.0
+    },
+    {
+      "id": "tool_use-test-00080",
+      "response": "Thought: First, I need to create the PostgreSQL data source with the given details. Then, I will embed the specified dashboard into the \"Ops Console\" application.\n\nAction: createDataSource\nAction Input: {\"sourceName\": \"Ops Warehouse\", \"connectionString\": \"postgres://ops:pw@warehouse/ops\", \"type\": \"postgresql\"}",
+      "n_tokens": 71,
+      "truncated": false,
+      "acc": 0.0,
+      "acc_strict": 0.0
+    },
+    {
+      "id": "tool_use-test-00081",
+      "response": "Thought: First, I need to list all roles using the provided access token. Then, I will assign the role \"rol_auditor\" to the user \"auth0|auditor-17\".\n\nAction: listRoles\nAction Input: {\"accessToken\": \"tok_roles_77\"}",
+      "n_tokens": 61,
+      "truncated": false,
+      "acc": 0.0,
+      "acc_strict": 0.0
+    },
+    {
+      "id": "tool_use-test-00082",
+      "response": "Thought: The user wants pictures of albino axolotls in small and medium sizes. I should use the searchAxolotlImages tool to find these pictures.\nAction: searchAxolotlImages\nAction Input: {\"color\": \"albino\", \"size\": \"small\", \"page\": 1}\nAction Input: {\"color\": \"albino\", \"size\": \"medium\", \"page\": 1}",
+      "n_tokens": 91,
+      "truncated": false,
+      "acc": 0.0,
+      "acc_strict": 0.0
+    },
+    {
+      "id": "tool_use-test-00083",
+      "response": "Thought: The user wants pictures of wild axolotls in different sizes. I should use the searchAxolotlImages function to find these images.\nAction: searchAxolotlImages\nAction Input: {\"color\": \"wild\", \"gender\": \"\", \"size\": \"small\", \"page\": 1}",
+      "n_tokens": 67,
+      "truncated": false,
+      "acc": 0.0,
+      "acc_strict": 0.0
+    },
+    {
+      "id": "tool_use-test-00084",
+      "response": "Thought: The user wants to see leucistic axolotl pictures in different sizes. I should use the searchAxolotlImages function to find these pictures.\nAction: searchAxolotlImages\nAction Input: {\"color\": \"leucistic\", \"size\": \"small,medium,large\", \"page\": 1}",
+      "n_tokens": 72,
+      "truncated": false,
+      "acc": 0.0,
+      "acc_strict": 0.0
+    },
+    {
+      "id": "tool_use-test-00085",
+      "response": "Thought: I need to use the Lob.com service to verify the US address provided by the user.\nAction: verifyUSAddress\nAction Input: {\"addressLine1\": \"742 Evergreen Terrace\", \"city\": \"Springfield\", \"state\": \"IL\", \"zipCode\": \"62704\"}",
+      "n_tokens": 67,
+      "truncated": false,
+      "acc": 0.0,
+      "acc_strict": 0.0
+    },
+    {
+      "id": "tool_use-test-00086",
+      "response": "Thought: I need to use the Lob.com tools to verify and standardize the provided address.\nAction: verifyUSAddress\nAction Input: {\"addressLine1\": \"11 Wall Street\", \"addressLine2\": \"Floor 7\", \"city\": \"New York\", \"state\": \"NY\", \"zipCode\": \"10005\"}",
+      "n_tokens": 74,
+      "truncated": false,
+      "acc": 0.0,
+      "acc_strict": 0.0
+    },
+    {
+      "id": "tool_use-test-00087",
+      "response": "Thought: I need to use the Lob.com service to verify the US address.\nAction: verifyUSAddress\nAction Input: {\"addressLine1\": \"405 Howard Street\", \"city\": \"San Francisco\", \"state\": \"CA\", \"zipCode\": \"94105\"}",
+      "n_tokens": 62,
+      "truncated": false,
+      "acc": 0.0,
+      "acc_strict": 0.0
+    },
+    {
+      "id": "tool_use-test-00088",
+      "response": "Thought: To get the current exchange rate from USD to JPY, I need to use the 1Forge API and call the getExchangeRates function with the appropriate parameters.\nAction: getExchangeRates\nAction Input: {\"base\": \"USD\", \"symbols\": \"JPY\"}",
+      "n_tokens": 58,
+      "truncated": false,
+      "acc": 1.0,
+      "acc_strict": 1.0
+    },
+    {
+      "id": "tool_use-test-00089",
+      "response": "Thought: I need to use the Am\u00e9thyste tool to generate a cyberpunk avatar based on the user's preferences.\nAction: generateAvatar\nAction Input: {\"userId\": \"555111222\", \"style\": \"cyberpunk\", \"format\": \"png\"}",
+      "n_tokens": 63,
+      "truncated": false,
+      "acc": 1.0,
+      "acc_strict": 1.0
+    },
+    {
+      "id": "tool_use-test-00090",
+      "response": "Thought: To fetch the user profile, I need to use the getUserProfile function with the provided user ID and access token.\nAction: getUserProfile\nAction Input: {\"userId\": \"google-oauth2|abc123\", \"accessToken\": \"tok_001\"}",
+      "n_tokens": 58,
+      "truncated": false,
+      "acc": 1.0,
+      "acc_strict": 1.0
+    },
+    {
+      "id": "tool_use-test-00091",
+      "response": "Thought: I need to use the AniAPI to retrieve the details of the anime with the given ID.\nAction: getAnimeDetails\nAction Input: {\"animeId\": 98765}",
+      "n_tokens": 43,
+      "truncated": false,
+      "acc": 1.0,
+      "acc_strict": 1.0
+    },
+    {
+      "id": "tool_use-test-00092",
+      "response": "Thought: The user wants specific verses from different versions of the Bible. I should use the getSpecificVerse function to fetch these verses.\nAction: getSpecificVerse\nAction Input: {\"book\": \"Romans\", \"chapter\": 12, \"verse\": 2, \"version\": \"New International Version\", \"language\": \"English\"}",
+      "n_tokens": 71,
+      "truncated": false,
+      "acc": 0.0,
+      "acc_strict": 0.0
+    },
+    {
+      "id": "tool_use-test-00093",
+      "response": "Thought: I need to use the getHolidayDetails tool to retrieve detailed information about Christmas Day.\nAction: getHolidayDetails\nAction Input: {\"holidayId\": \"Christmas Day\", \"language\": \"en\"}",
+      "n_tokens": 43,
+      "truncated": false,
+      "acc": 0.0,
+      "acc_strict": 0.0
+    },
+    {
+      "id": "tool_use-test-00094",
+      "response": "Thought: I need to first check the reputation of the IP address 198.51.100.90 using the checkIPReputation function, and then report it using the reportAbusiveIP function based on the results.\nAction: checkIPReputation\nAction Input: {\"ip\": \"198.51.100.90\", \"maxAgeInDays\": 30}",
+      "n_tokens": 90,
+      "truncated": false,
+      "acc": 0.0,
+      "acc_strict": 0.0
+    },
+    {
+      "id": "tool_use-test-00095",
+      "response": "Thought: I need to use the searchAnime function to find anime that match the criteria provided by the user.\nAction: searchAnime\nAction Input: {\"query\": \"romance\", \"filters\": {\"year\": 2021, \"rating\": 4.5}}",
+      "n_tokens": 58,
+      "truncated": false,
+      "acc": 0.0,
+      "acc_strict": 0.0
+    },
+    {
+      "id": "tool_use-test-00096",
+      "response": "Thought: I need to use the searchAnime function to find anime that match the criteria provided by the user.\nAction: searchAnime\nAction Input: {\"query\": \"comedy\", \"filters\": {\"releaseYear\": 2019, \"rating\": 4}}",
+      "n_tokens": 57,
+      "truncated": false,
+      "acc": 0.0,
+      "acc_strict": 0.0
+    }
+  ]
+}

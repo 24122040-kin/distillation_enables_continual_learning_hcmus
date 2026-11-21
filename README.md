@@ -128,12 +128,13 @@ all tables, including paired McNemar / bootstrap tests.
 | E1 Base 7B, Science | `test-base-7b-science` (`dkbn0qev`) | 32.5 % | 32.1 % |
 | E1 SFT 7B, Science (epoch 1) | `test-sft_science_…_n352_s42-epoch1` (`5ovyo04j`) | 36.5 % | 66.2 % |
 | E1 SDFT 7B, Science (epoch 2, best on val) | train `9af4d088`, test `4px6nl5i` | 41.2 % (SDFT − SFT = +4.7 pp, McNemar p = 0.047) | 70.2 % |
-| E1 prior capabilities | `prior-base-7b` (`pc471azo`); SFT / SDFT running 21/11 | Base: MMLU 69.1, IFEval 68.4 | Table 5 |
+| E1/E2 prior capabilities (6 benchmarks, avg, `--limit 0.25`) | `prior-*` runs | Base 67.3 / SFT Sci 68.1 / SDFT Sci 69.0 / SFT Tool 69.5 / SDFT Tool 70.0 (no forgetting observed) | 65.5 / 53.4 / 64.5 / 56.0 / 65.4 |
 | E2 Base 7B, Tool Use | `test-base-7b-tool` (`brrhsz1p`) | 41.2 % | 42.9 % |
 | E2 SFT 7B, Tool Use (epoch 1) | `test-sft_tool_use_…_n528_s42-epoch1` (`sv8cpi0m`) | 62.9 % | 63.2 % |
-| E2 SDFT 7B, Tool Use | train `8a0c196e` (CUDA OOM twice, resumed 21/11) | running | 70.6 % |
-| E3 3B Science: Base / Teacher (val) / SFT | `test-sft_science_Qwen2.5-3B-…-epoch1` (`0oxz9j4b`) | 27.8 / 89.6 / 34.7 % | SDFT − SFT = −3.3 pp |
-| E3 3B SDFT (epoch 1, stopped at step 41/44) | train `a0d9b8f7` | running | |
+| E2 SDFT 7B, Tool Use (epoch 1 only) | train `8a0c196e` (CUDA OOM twice, resumed 21/11), test `zeqs4yqw` | 61.9 % (SDFT − SFT = −1.0 pp, p = 1.00) | 70.6 % |
+| E3 3B Science: Base / Teacher (val) / SFT | `test-sft_science_Qwen2.5-3B-…-epoch1` (`0oxz9j4b`) | 27.8 / 89.6 / 34.7 % | gap shown only in Fig. 5 |
+| E3 3B SDFT (epoch 1, stopped at step 41/44) | train `a0d9b8f7` | 37.3 % (SDFT − SFT = +2.6 pp, p = 0.35) | |
+| 7B Teacher with demonstration (val) | `teacher-Qwen2.5-7B-Instruct-science` / `-tool` | Science 92.5 %, Tool Use 55.9 % | |
 | E3 1.5B | not run (GPU quota) | | |
 
 ## 6. Reproducibility

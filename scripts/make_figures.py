@@ -132,9 +132,10 @@ def fig_model_size(new, out):
             _bar(ax, x, r["acc"], w, color)
             ax.text(x, r["acc"] + 1.2, f"{r['acc']:.1f}", ha="center", va="bottom", fontsize=11, color=INK)
         sft, sd = new.get((size, "science", "sft", "test")), new.get((size, "science", "sdft", "test"))
-        paper_gap = {"3B": "−3.3", "7B": "+4.0"}[size]
+        # Paper gives the 7B gap in Table 5 (70.2 - 66.2); the 3B gap is only read off a figure, so not printed.
+        paper_gap = {"7B": " | paper +4.0 pp"}.get(size, "")
         ours_gap = f"{sd['acc'] - sft['acc']:+.1f}" if sft and sd else "?"
-        ax.text(j, -13, f"SDFT − SFT: nhóm {ours_gap} pp | paper {paper_gap} pp", ha="center", fontsize=11, color=INK2)
+        ax.text(j, -13, f"SDFT − SFT: nhóm {ours_gap} pp{paper_gap}", ha="center", fontsize=11, color=INK2)
     ax.set_xticks([0, 1], ["Qwen2.5-3B-Instruct", "Qwen2.5-7B-Instruct"], fontsize=13, color=INK)
     _style(ax, 100)
     ax.legend(handles=[Patch(color=c, label=l) for _, l, c, _ in series], loc="upper center", ncol=4, frameon=False,

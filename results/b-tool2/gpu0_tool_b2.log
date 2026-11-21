@@ -1,0 +1,82 @@
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+I0000 00:00:1795230326.793585     347 cudart_stub.cc:31] Could not find cuda drivers on your machine, GPU will not be used.
+Generating train split:   0%|          | 0/4046 [00:00<?, ? examples/s]Generating train split: 100%|██████████| 4046/4046 [00:00<00:00, 29428.20 examples/s]Generating train split: 100%|██████████| 4046/4046 [00:00<00:00, 29002.76 examples/s]
+Generating test split:   0%|          | 0/97 [00:00<?, ? examples/s]Generating test split: 100%|██████████| 97/97 [00:00<00:00, 9025.21 examples/s]
+`torch_dtype` is deprecated! Use `dtype` instead!
+Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:  25%|██▌       | 1/4 [00:07<00:22,  7.48s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:25<00:27, 13.75s/it]Loading checkpoint shards:  75%|███████▌  | 3/4 [00:43<00:15, 15.56s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:58<00:00, 15.57s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:58<00:00, 14.73s/it]
+wandb: [wandb.login()] Loaded credentials for https://api.wandb.ai from WANDB_API_KEY.
+wandb: Currently logged in as: baokin91ltri (baokin91ltri-tr-ng-i-h-c-khoa-h-c-t-nhi-n-hqg-hcm) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: Using an existing wandb-core service via WANDB_SERVICE.
+wandb: setting up run 8a0c196e
+wandb: Tracking run with wandb version 0.28.1
+wandb: Run data is saved locally in /kaggle/working/distillation_enables_continual_learning_hcmus/wandb/run-20261121_030720-8a0c196e
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Resuming run sdft_tool_use_Qwen2.5-7B-Instruct_n528_ema0.01_forward_s42
+wandb: ⭐️ View project at https://wandb.ai/baokin91ltri-tr-ng-i-h-c-khoa-h-c-t-nhi-n-hqg-hcm/sdft-continual-learning
+wandb: 🚀 View run at https://wandb.ai/baokin91ltri-tr-ng-i-h-c-khoa-h-c-t-nhi-n-hqg-hcm/sdft-continual-learning/runs/8a0c196e
+`use_cache=True` is incompatible with gradient checkpointing. Setting `use_cache=False`.
+/usr/local/lib/python3.13/dist-packages/torch/_dynamo/eval_frame.py:1263: UserWarning: torch.utils.checkpoint: the use_reentrant parameter should be passed explicitly. Starting in PyTorch 2.9, calling checkpoint without use_reentrant will raise an exception. use_reentrant=False is recommended, but if you need to preserve the current default behavior, you can pass use_reentrant=True. Refer to docs for more details on the differences between the two variants.
+  return fn(*args, **kwargs)
+Resumed from /kaggle/working/checkpoints/sdft_tool_use_Qwen2.5-7B-Instruct_n528_ema0.01_forward_s42/resume at global step 10
+[ep 1 step 11/33] kl=0.1677 len=173 gen=466s train=437s
+wandb: WARNING Tried to log to step 11 that is less than the current step 16. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+[ep 1 step 12/33] kl=0.1472 len=133 gen=406s train=384s
+wandb: WARNING Tried to log to step 12 that is less than the current step 16. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+[ep 1 step 13/33] kl=0.1351 len=94 gen=270s train=383s
+wandb: WARNING Tried to log to step 13 that is less than the current step 16. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+[ep 1 step 14/33] kl=0.0966 len=87 gen=252s train=347s
+wandb: WARNING Tried to log to step 14 that is less than the current step 16. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+[ep 1 step 15/33] kl=0.1054 len=155 gen=513s train=392s
+wandb: WARNING Tried to log to step 15 that is less than the current step 16. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+[ep 1 step 16/33] kl=0.1381 len=110 gen=302s train=404s
+[ep 1 step 17/33] kl=0.0695 len=185 gen=617s train=443s
+[ep 1 step 18/33] kl=0.0989 len=126 gen=336s train=395s
+[ep 1 step 19/33] kl=0.1351 len=97 gen=251s train=381s
+[ep 1 step 20/33] kl=0.1055 len=186 gen=520s train=493s
+[ep 1 step 21/33] kl=0.0885 len=162 gen=448s train=435s
+[ep 1 step 22/33] kl=0.0944 len=125 gen=322s train=397s
+[ep 1 step 23/33] kl=0.0834 len=162 gen=480s train=402s
+[ep 1 step 24/33] kl=0.0781 len=128 gen=361s train=371s
+[ep 1 step 25/33] kl=0.1064 len=154 gen=429s train=443s
+[ep 1 step 26/33] kl=0.0880 len=165 gen=430s train=422s
+[ep 1 step 27/33] kl=0.0763 len=115 gen=322s train=376s
+[ep 1 step 28/33] kl=0.1248 len=162 gen=491s train=416s
+[ep 1 step 29/33] kl=0.0795 len=133 gen=349s train=435s
+[ep 1 step 30/33] kl=0.1036 len=192 gen=622s train=502s
+[ep 1 step 31/33] kl=0.0671 len=161 gen=473s train=430s
+[ep 1 step 32/33] kl=0.0911 len=113 gen=319s train=431s
+[ep 1 step 33/33] kl=0.0762 len=180 gen=503s train=452s
+Stopping after epoch 1 (--stop_after_epoch); re-run to continue.
+wandb: updating run metadata
+wandb: uploading output.log; uploading wandb-summary.json; uploading config.yaml
+wandb: 
+wandb: Run history:
+wandb:                  epoch ▁▁▂▂▃▃▃▄▄▅▅▆▆▆▇▇██
+wandb:         time/elapsed_h ▁▂▂▂▃▃▃▄▄▅▅▅▆▆▇▇██
+wandb:           time/gen_sec ▂█▃▁▆▅▂▅▃▄▄▂▆▃█▅▂▆
+wandb:          time/step_sec ▂▇▂▁▆▅▂▅▂▄▄▂▅▃█▅▃▆
+wandb:         time/train_sec ▃▅▂▂▇▄▂▃▁▅▄▁▃▄█▄▄▅
+wandb:        train/grad_norm ▇▁▄▅▃▂▄▃▂█▂▂▆▂▂▁▃▃
+wandb:          train/kl_loss █▁▄█▅▃▄▃▂▅▃▂▇▂▅▁▃▂
+wandb:               train/lr ███▇▇▇▆▆▆▅▅▄▄▃▃▂▂▁
+wandb: train/resp_tokens_mean ▂▇▃▁█▆▃▆▃▅▆▂▆▄█▆▂▇
+wandb:          train/skipped ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:                     +1 ...
+wandb: 
+wandb: Run summary:
+wandb:                  epoch 1
+wandb:         time/elapsed_h 8.09416
+wandb:           time/gen_sec 502.83506
+wandb:          time/step_sec 954.60548
+wandb:         time/train_sec 451.68674
+wandb:        train/grad_norm 0.26446
+wandb:          train/kl_loss 0.07617
+wandb:               train/lr 6e-05
+wandb: train/resp_tokens_mean 179.9375
+wandb:          train/skipped 0
+wandb:                     +1 ...
+wandb: 
+wandb: 🚀 View run sdft_tool_use_Qwen2.5-7B-Instruct_n528_ema0.01_forward_s42 at: https://wandb.ai/baokin91ltri-tr-ng-i-h-c-khoa-h-c-t-nhi-n-hqg-hcm/sdft-continual-learning/runs/8a0c196e
+wandb: ⭐️ View project at: https://wandb.ai/baokin91ltri-tr-ng-i-h-c-khoa-h-c-t-nhi-n-hqg-hcm/sdft-continual-learning
+wandb: Synced 5 W&B file(s), 0 media file(s), 0 artifact file(s) and 0 other file(s)
+wandb: Find logs at: ./wandb/run-20261121_030720-8a0c196e/logs

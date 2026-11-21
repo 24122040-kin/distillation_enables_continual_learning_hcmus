@@ -1,0 +1,59 @@
+Generating train split:   0%|          | 0/2674 [00:00<?, ? examples/s]Generating train split: 100%|██████████| 2674/2674 [00:00<00:00, 21959.58 examples/s]Generating train split: 100%|██████████| 2674/2674 [00:00<00:00, 21516.84 examples/s]
+Generating test split:   0%|          | 0/507 [00:00<?, ? examples/s]Generating test split: 100%|██████████| 507/507 [00:00<00:00, 90018.72 examples/s]
+`torch_dtype` is deprecated! Use `dtype` instead!
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+I0000 00:00:1795230326.793594     351 cudart_stub.cc:31] Could not find cuda drivers on your machine, GPU will not be used.
+Fetching 2 files:   0%|          | 0/2 [00:00<?, ?it/s]Fetching 2 files:  50%|█████     | 1/2 [00:18<00:18, 18.94s/it]Fetching 2 files: 100%|██████████| 2/2 [00:30<00:00, 14.83s/it]Fetching 2 files: 100%|██████████| 2/2 [00:30<00:00, 15.45s/it]
+Loading checkpoint shards:   0%|          | 0/2 [00:00<?, ?it/s]Loading checkpoint shards:  50%|█████     | 1/2 [00:01<00:01,  1.82s/it]Loading checkpoint shards: 100%|██████████| 2/2 [00:08<00:00,  4.44s/it]Loading checkpoint shards: 100%|██████████| 2/2 [00:08<00:00,  4.05s/it]
+wandb: [wandb.login()] Loaded credentials for https://api.wandb.ai from WANDB_API_KEY.
+wandb: Currently logged in as: baokin91ltri (baokin91ltri-tr-ng-i-h-c-khoa-h-c-t-nhi-n-hqg-hcm) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: Using an existing wandb-core service via WANDB_SERVICE.
+wandb: Tracking run with wandb version 0.28.1
+wandb: Run data is saved locally in /kaggle/working/distillation_enables_continual_learning_hcmus/wandb/run-20261121_030619-ts9s4jbo
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run test-sdft_science_Qwen2.5-3B-Instruct_n352_ema0.01_forward_s42-epoch1
+wandb: ⭐️ View project at https://wandb.ai/baokin91ltri-tr-ng-i-h-c-khoa-h-c-t-nhi-n-hqg-hcm/sdft-continual-learning
+wandb: 🚀 View run at https://wandb.ai/baokin91ltri-tr-ng-i-h-c-khoa-h-c-t-nhi-n-hqg-hcm/sdft-continual-learning/runs/ts9s4jbo
+eval science:   0%|          | 0/32 [00:00<?, ?it/s]eval science:   3%|▎         | 1/32 [04:10<2:09:10, 250.01s/it]eval science:   6%|▋         | 2/32 [10:12<2:38:07, 316.26s/it]eval science:   9%|▉         | 3/32 [16:11<2:42:09, 335.52s/it]eval science:  12%|█▎        | 4/32 [21:02<2:28:22, 317.94s/it]eval science:  16%|█▌        | 5/32 [26:15<2:22:19, 316.29s/it]eval science:  19%|█▉        | 6/32 [32:49<2:28:27, 342.60s/it]eval science:  22%|██▏       | 7/32 [37:17<2:12:37, 318.29s/it]eval science:  25%|██▌       | 8/32 [44:34<2:22:26, 356.12s/it]eval science:  28%|██▊       | 9/32 [49:23<2:08:26, 335.05s/it]eval science:  31%|███▏      | 10/32 [53:42<1:54:16, 311.65s/it]eval science:  34%|███▍      | 11/32 [57:39<1:41:05, 288.82s/it]eval science:  38%|███▊      | 12/32 [1:03:44<1:44:02, 312.13s/it]eval science:  41%|████      | 13/32 [1:08:18<1:35:06, 300.37s/it]eval science:  44%|████▍     | 14/32 [1:12:20<1:24:52, 282.89s/it]eval science:  47%|████▋     | 15/32 [1:17:23<1:21:53, 289.02s/it]eval science:  50%|█████     | 16/32 [1:22:17<1:17:27, 290.49s/it]eval science:  53%|█████▎    | 17/32 [1:27:01<1:12:04, 288.32s/it]eval science:  56%|█████▋    | 18/32 [1:32:33<1:10:23, 301.67s/it]eval science:  59%|█████▉    | 19/32 [1:39:08<1:11:22, 329.43s/it]eval science:  62%|██████▎   | 20/32 [1:45:22<1:08:36, 343.05s/it]eval science:  66%|██████▌   | 21/32 [1:49:23<57:15, 312.34s/it]  eval science:  69%|██████▉   | 22/32 [1:55:32<54:52, 329.27s/it]eval science:  72%|███████▏  | 23/32 [1:59:06<44:12, 294.74s/it]eval science:  75%|███████▌  | 24/32 [2:03:24<37:50, 283.84s/it]eval science:  78%|███████▊  | 25/32 [2:08:32<33:56, 290.95s/it]eval science:  81%|████████▏ | 26/32 [2:13:14<28:49, 288.19s/it]eval science:  84%|████████▍ | 27/32 [2:18:46<25:07, 301.53s/it]eval science:  88%|████████▊ | 28/32 [2:23:42<19:58, 299.65s/it]eval science:  91%|█████████ | 29/32 [2:28:20<14:40, 293.41s/it]eval science:  94%|█████████▍| 30/32 [2:32:01<09:03, 271.50s/it]eval science:  97%|█████████▋| 31/32 [2:35:59<04:21, 261.40s/it]eval science: 100%|██████████| 32/32 [2:41:12<00:00, 277.10s/it]eval science: 100%|██████████| 32/32 [2:41:12<00:00, 302.28s/it]
+wandb: uploading artifact run-ts9s4jbo-evalsamples-otX14Q; updating run metadata
+wandb: uploading artifact run-ts9s4jbo-evalsamples-otX14Q
+wandb: uploading config.yaml; uploading media/table/eval/samples_1_5bc14c6f674934683941.table.json; uploading output.log; uploading wandb-summary.json
+wandb: 
+wandb: Run history:
+wandb:                  eval/acc ▁
+wandb: eval/mean_response_tokens ▁
+wandb:                    eval/n ▁
+wandb:        eval/truncated_pct ▁
+wandb:        paper_cmp/delta_pp ▁
+wandb:            paper_cmp/ours ▁
+wandb:           paper_cmp/paper ▁
+wandb:     paper_cmp/rel_dev_pct ▁
+wandb: 
+wandb: Run summary:
+wandb:                  eval/acc 37.27811
+wandb: eval/mean_response_tokens 425.7357
+wandb:                    eval/n 507
+wandb:        eval/truncated_pct 0.59172
+wandb:        paper_cmp/delta_pp -32.92189
+wandb:            paper_cmp/ours 37.27811
+wandb:           paper_cmp/paper 70.2
+wandb:     paper_cmp/rel_dev_pct -46.89728
+wandb: 
+wandb: 🚀 View run test-sdft_science_Qwen2.5-3B-Instruct_n352_ema0.01_forward_s42-epoch1 at: https://wandb.ai/baokin91ltri-tr-ng-i-h-c-khoa-h-c-t-nhi-n-hqg-hcm/sdft-continual-learning/runs/ts9s4jbo
+wandb: ⭐️ View project at: https://wandb.ai/baokin91ltri-tr-ng-i-h-c-khoa-h-c-t-nhi-n-hqg-hcm/sdft-continual-learning
+wandb: Synced 5 W&B file(s), 1 media file(s), 2 artifact file(s) and 0 other file(s)
+wandb: Find logs at: ./wandb/run-20261121_030619-ts9s4jbo/logs
+{
+  "metrics": {
+    "acc": 37.27810650887574,
+    "truncated_pct": 0.591715976331361,
+    "mean_response_tokens": 425.73570019723866,
+    "n": 507
+  },
+  "paper_cmp": {
+    "paper": 70.2,
+    "ours": 37.27810650887574,
+    "delta_pp": -32.921893491124266,
+    "rel_dev_pct": -46.89728417539069
+  }
+}

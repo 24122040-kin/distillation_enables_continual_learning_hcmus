@@ -201,7 +201,7 @@ def table_scale(new: Dict) -> List[str]:
     lines = ["## Slide 24: model size on Science (E3)", "",
              "| Model | Base (test) | Teacher (val, with demo) | SFT (test) | SDFT (test) | SDFT − SFT (pp) | Paper (pp) |",
              "|---|---|---|---|---|---|---|"]
-    paper_gap = {"3B": "−3.3", "7B": "+4.0"}
+    paper_gap = {"3B": "chỉ có trên hình (Fig. 5), không có số", "7B": "+4.0 (Table 5)"}
     sizes = sorted({k[0] for k in new if k[1] == "science"}, key=lambda s: float(s[:-1]))
     for s in sizes:
         g = lambda tag, split: new.get((s, "science", tag, split))

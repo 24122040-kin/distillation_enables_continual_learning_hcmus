@@ -1,0 +1,2 @@
+!!! GPU0 job exited with an error, see /kaggle/working/eval_results/gpu0_e2_sdft.log
+!!! FAILED (exit 1): eval_new Qwen/Qwen2.5-3B-Instruct science sdft test /kaggle/working/checkpoints/sdft_science_Qwen2.5-3B-Instruct_n352_ema0.01_forward_s42/epoch2 --run_name test-sdft_science_Qwen2.5-3B-Instruct_n352_ema0.01_forward_s42-epoch2

@@ -40,6 +40,8 @@ QE=(--quant_bits "${QUANT_EVAL:-16}")  # evaluation: fp16, model split over both
 TRAIN_GPUS=${TRAIN_GPUS:-0}
 EVAL_GPUS=${EVAL_GPUS:-0,1}
 LIMIT=${LIMIT:-0.25}         # fraction of each lm-eval benchmark (T4 time budget)
+# HumanEval: the chat variant. Plain `humaneval` + --apply_chat_template scored 0/41 for the 7B base
+# (21/11): the chat reply is not a raw continuation of the prompt, so no completion compiles.
 export WANDB_PROJECT=${WANDB_PROJECT:-sdft-continual-learning}
 # Team Hugging Face mirror of the authors' data (scripts/mirror_official_data.py).
 # Empty -> fall back to the official GitHub repo pinned to the same commit (identical files).
@@ -80,7 +82,7 @@ eval_prior() {  # model name [checkpoint]
   [ "${QUANT_EVAL:-16}" = 4 ] && margs="pretrained=$m,load_in_4bit=True,dtype=float16"
   CUDA_VISIBLE_DEVICES=$EVAL_GPUS HF_ALLOW_CODE_EVAL=1 lm_eval --model hf \
     --model_args "$margs${ck:+,peft=$ck}" \
-    --tasks hellaswag,truthfulqa_mc2,mmlu,ifeval,winogrande,humaneval \
+    --tasks "${PRIOR_TASKS:-hellaswag,truthfulqa_mc2,mmlu,ifeval,winogrande,humaneval_instruct}" \
     --apply_chat_template --confirm_run_unsafe_code --batch_size auto --limit "$LIMIT" \
     --wandb_args "project=$WANDB_PROJECT,name=prior-$name,job_type=eval-prior" \
     --output_path "$EV/prior/$name"
@@ -133,6 +135,7 @@ PY
     ;;
   e1_sdft)      train_sdft "$M7" science "$N_SCI" ;;
   e2_sdft)      train_sdft "$M7" tool_use "$N_TOOL" ;;
+  e2_sdft_e1)   train_sdft "$M7" tool_use "$N_TOOL" --stop_after_epoch 1 ;;   # used by tool_b2
   base)
     # Base model: new-task accuracy (test), teacher accuracy with the demonstration in context
     # (val, paper Section 3.2), and prior capabilities. Independent of N_SCI / N_TOOL.
@@ -243,6 +246,41 @@ PY2
     done_or "teacher-$(short $M7)-science" eval_new "$M7" science base val "" --with_demo --run_name "teacher-$(short $M7)-science"
     try eval_prior "$M7" "$(short "$(dirname "$sft_t")")" "$sft_t"
     done_or "teacher-$(short $M7)-tool" eval_new "$M7" tool_use base val "" --with_demo --run_name "teacher-$(short $M7)-tool" ;;
+  tool_b2)
+    # 21/11, after the weekly quota reset: finish epoch 1 of 7B SDFT Tool Use from the step-10 resume
+    # checkpoint (GPU 0; rollouts in groups of GEN_BS=4, halved again on CUDA OOM; same 16 prompts per
+    # optimizer step and lr schedule as before), while GPU 1 runs the single-GPU leftover. Then the
+    # epoch-1 test evaluation on both GPUs, then its prior capabilities.
+    me=$(readlink -f "$0")
+    sd_t="$CK/sdft_tool_use_$(short $M7)_n${N_TOOL}_ema0.01_forward_s${SEED}"
+    sd3="$CK/sdft_science_$(short $M3)_n${N_SCI}_ema0.01_forward_s${SEED}/epoch1"
+    python -c "from huggingface_hub import snapshot_download as d; d('$M7')"
+    GEN_BS=${GEN_BS:-4} MAX_HOURS=${MAX_HOURS:-8.5} TRAIN_GPUS=0 bash "$me" e2_sdft_e1 > "$EV/gpu0_tool_b2.log" 2>&1 &
+    p0=$!
+    if [ ! -f "$EV/test-$(short "$(dirname "$sd3")")-epoch1.json" ] && [ -d "$sd3" ]; then
+      EVAL_GPUS=1 bash "$me" eval_one "$M3" science sdft test "$sd3" --run_name "test-$(short "$(dirname "$sd3")")-epoch1" \
+        > "$EV/gpu1_sdft3b.log" 2>&1 || echo "!!! FAILED: 3B SDFT test, see $EV/gpu1_sdft3b.log" | tee -a "$EV/FAILED.txt"
+    fi
+    wait "$p0" || { echo "!!! FAILED: SDFT Tool training, see $EV/gpu0_tool_b2.log" | tee -a "$EV/FAILED.txt"; tail -n 40 "$EV/gpu0_tool_b2.log"; }
+    tail -n 5 "$EV/gpu0_tool_b2.log"
+    if [ -d "$sd_t/epoch1" ]; then
+      try eval_new "$M7" tool_use sdft test "$sd_t/epoch1" --run_name "test-$(short "$sd_t")-epoch1"
+      try eval_prior "$M7" "$(short "$sd_t")" "$sd_t/epoch1"
+    fi ;;
+  prior_rest)
+    # 21/11: prior capabilities (and 7B teacher accuracy) that no earlier session finished, most
+    # important first: 7B SDFT Science (account A's epoch 2, selected on val), then whatever is missing.
+    has_prior() { compgen -G "$EV/prior/$1/*/results_*.json" > /dev/null || compgen -G "$EV/prior/$1/results_*.json" > /dev/null; }
+    sd_s="$CK/sdft_science_$(short $M7)_n${N_SCI}_ema0.01_forward_s${SEED}/epoch2"
+    sft_s="$CK/sft_science_$(short $M7)_n${N_SCI}_s${SEED}/epoch1"
+    sft_t="$CK/sft_tool_use_$(short $M7)_n${N_TOOL}_s${SEED}/epoch1"
+    has_prior "$(short "$(dirname "$sd_s")")" || try eval_prior "$M7" "$(short "$(dirname "$sd_s")")" "$sd_s"
+    has_prior base-7b || try eval_prior "$M7" base-7b
+    has_prior base-7b-humaneval || PRIOR_TASKS=humaneval_instruct try eval_prior "$M7" base-7b-humaneval   # base-7b ran plain humaneval
+    has_prior "$(short "$(dirname "$sft_s")")" || try eval_prior "$M7" "$(short "$(dirname "$sft_s")")" "$sft_s"
+    [ -f "$EV/teacher-$(short $M7)-science.json" ] || try eval_new "$M7" science base val "" --with_demo --run_name "teacher-$(short $M7)-science"
+    has_prior "$(short "$(dirname "$sft_t")")" || try eval_prior "$M7" "$(short "$(dirname "$sft_t")")" "$sft_t"
+    [ -f "$EV/teacher-$(short $M7)-tool.json" ] || try eval_new "$M7" tool_use base val "" --with_demo --run_name "teacher-$(short $M7)-tool" ;;
   eval_one) shift; eval_new "$@" ;;   # one evaluation with the current EVAL_GPUS (used by final_b)
   e1_sft)
     train_sft "$M7" science "$N_SCI"

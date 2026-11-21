@@ -412,6 +412,11 @@ def train_sdft(args: argparse.Namespace) -> None:
         model.save_pretrained(os.path.join(out_dir, f"epoch{epoch + 1}"), selected_adapters=["default"])
         tokenizer.save_pretrained(os.path.join(out_dir, f"epoch{epoch + 1}"))
         save_resume_checkpoint(resume_dir, model, optimizer, scheduler, state)
+        if args.stop_after_epoch and epoch + 1 >= args.stop_after_epoch < args.epochs:
+            # Same schedule as the full run (lr still follows --epochs); re-run without the flag to continue.
+            print(f"Stopping after epoch {epoch + 1} (--stop_after_epoch); re-run to continue.", flush=True)
+            wandb.finish()
+            return
 
     with open(os.path.join(out_dir, "DONE"), "w") as f:
         f.write(json.dumps(state))
@@ -445,7 +450,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--max_hours", type=float, default=None, help="Stop and checkpoint after this many hours")
     p.add_argument("--kl_chunk", type=int, default=128, help="Tokens per chunk of the vocabulary KL (peak memory)")
-    p.add_argument("--save_every", type=int, default=10, help="Optimizer steps between resume checkpoints")
+    p.add_argument("--stop_after_epoch", type=int, default=None,
+                   help="Save and exit after this epoch, keeping the lr schedule of --epochs (time budget)")
+    p.add_argument("--save_every",type=int, default=10, help="Optimizer steps between resume checkpoints")
     p.add_argument("--output_dir", default="./checkpoints")
     p.add_argument("--run_name", default=None)
     p.add_argument("--tags", nargs="*", default=[])

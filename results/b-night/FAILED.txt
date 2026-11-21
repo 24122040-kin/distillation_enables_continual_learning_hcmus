@@ -1,0 +1,2 @@
+!!! GPU0 job exited with an error, see /kaggle/working/eval_results/gpu0_e2_sdft.log
+!!! GPU1 chain exited with an error or timed out, see /kaggle/working/eval_results/gpu1_chain.log

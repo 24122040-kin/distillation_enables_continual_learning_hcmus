@@ -281,6 +281,14 @@ PY2
     [ -f "$EV/teacher-$(short $M7)-science.json" ] || try eval_new "$M7" science base val "" --with_demo --run_name "teacher-$(short $M7)-science"
     has_prior "$(short "$(dirname "$sft_t")")" || try eval_prior "$M7" "$(short "$(dirname "$sft_t")")" "$sft_t"
     [ -f "$EV/teacher-$(short $M7)-tool.json" ] || try eval_new "$M7" tool_use base val "" --with_demo --run_name "teacher-$(short $M7)-tool" ;;
+  tool_eval)
+    # 21/11 evening catch-up: the epoch-1 SDFT Tool Use test and prior evaluations that tool_b2 did not
+    # reach before its timeout (each one is skipped if its result is already in the inputs).
+    sd_t="$CK/sdft_tool_use_$(short $M7)_n${N_TOOL}_ema0.01_forward_s${SEED}"
+    [ -d "$sd_t/epoch1" ] || { echo "!!! no $sd_t/epoch1 in the inputs" | tee -a "$EV/FAILED.txt"; exit 1; }
+    [ -f "$EV/test-$(short "$sd_t")-epoch1.json" ] || try eval_new "$M7" tool_use sdft test "$sd_t/epoch1" --run_name "test-$(short "$sd_t")-epoch1"
+    compgen -G "$EV/prior/$(short "$sd_t")/*/results_*.json" > /dev/null || compgen -G "$EV/prior/$(short "$sd_t")/results_*.json" > /dev/null \
+      || try eval_prior "$M7" "$(short "$sd_t")" "$sd_t/epoch1" ;;
   eval_one) shift; eval_new "$@" ;;   # one evaluation with the current EVAL_GPUS (used by final_b)
   e1_sft)
     train_sft "$M7" science "$N_SCI"

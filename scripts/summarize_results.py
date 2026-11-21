@@ -117,10 +117,11 @@ def load_prior(dirs: List[str]) -> Dict[str, Dict]:
                     row[b] = 100.0 * res[b][key]
             row["runs"].append(f"prior-{run}")
     for row in out.values():
+        if "humaneval" in row and not row["he_instruct"]:
+            del row["humaneval"]   # plain humaneval + chat template is invalid (0/41); wait for humaneval_instruct
+            row.pop("avg", None)
         if all(b in row for b in BENCHES):
             row["avg"] = sum(row[b] for b in BENCHES) / len(BENCHES)
-        if "humaneval" in row and not row["he_instruct"]:
-            row["humaneval_note"] = "plain humaneval"
         row["run"] = ", ".join(row["runs"])
     return out
 

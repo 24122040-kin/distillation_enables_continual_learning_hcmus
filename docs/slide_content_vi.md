@@ -358,11 +358,13 @@ Các chi tiết dưới đây không xác minh được từ repo; trong bài c�
 | Job (`scripts/kaggle_jobs.sh`) | Tài khoản | Nội dung | W&B run chính | Trạng thái |
 | :--- | :---: | :--- | :--- | :---: |
 | `pilot` | A | Đo tốc độ, chọn N_SCI / N_TOOL | `pilot-sdft-7b-science`, `pilot-sdft-7b-tool_use` | ✅ |
-| `base` | B | Base 7B: test 2 tác vụ, Teacher (val), prior | `test-base-7b-*`, `teacher-Qwen2.5-7B-Instruct-*`, `prior-base-7b` | `[...]` |
-| `e1_sft` ; `e2_sft` | B | SFT 7B + chọn epoch + test + prior | `sft_science_…_n352_s42`, `sft_tool_use_…_n528_s42` | `[...]` |
-| `e1_sdft` → `eval_sdft e1` | A | SDFT 7B Science + đánh giá | `sdft_science_…_n352_ema0.01_forward_s42` | `[...]` |
-| `e2_sdft` → `eval_sdft e2` | C | SDFT 7B Tool Use + đánh giá | `sdft_tool_use_…_n528_ema0.01_forward_s42` | `[...]` |
-| `e3_small` | B | 1.5B (+ 3B) Science: Base, Teacher, SFT, SDFT | `test-*-1.5B-*`, `test-*-3B-*` | `[...]` |
+| `e1_sdft` → `eval_sdft e1` | A | SDFT 7B Science: train 2 epoch (12.4 h), val 2 epoch, test epoch 2 | `9af4d088` (train), `ka6eu8rn` / `s8n7epps` (val), `4px6nl5i` (test) | ✅ (prior bị huỷ, chạy lại ở `prior_rest`) |
+| `night2` / `night3` | B | SFT 7B ×2 tác vụ; E3 3B (Base, Teacher, SFT, SDFT) | `0oxz9j4b` (SFT 3B test), `a0d9b8f7` (SDFT 3B train) | ✅ (SDFT 3B dừng ở bước 41/44) |
+| `e2_sdft` | B | SDFT 7B Tool Use | `8a0c196e` | ⚠ CUDA OOM 2 lần (bước 16/33) |
+| `final_b` | B | Test 7B: Base ×2, SFT ×2; prior Base 7B | `dkbn0qev`, `brrhsz1p`, `5ovyo04j`, `sv8cpi0m`, `pc471azo` | ✅ |
+| `tool_b2` | B | SDFT 7B Tool Use: resume từ bước 10 → epoch 1, test, prior; SDFT 3B test | `8a0c196e` (train, cùng run) | ⏳ 21/11 |
+| `prior_rest` | B | Prior: SDFT Sci (adapter của A), HumanEval Base, SFT ×2; Teacher 7B | `prior-*`, `teacher-Qwen2.5-7B-Instruct-*` | ⏳ 21/11 |
+| `e3_small` (1.5B) | — | 1.5B Science | — | ❌ không đủ quota |
 
 * **IEEE Citation:** `[22]`
 * **Speaker Notes:** Phần cốt lõi của thuật toán được nhóm xây dựng độc lập dựa trên mô tả của bài báo. Dữ liệu chính thức được mirror lên Hugging Face và tải tự động trong code. Toàn bộ job được điều phối qua một script duy nhất và chia cho ba tài khoản Kaggle như trong bảng. Mỗi dòng trong bảng ứng với các run cụ thể trên W&B, nên người chấm có thể đối chiếu từng con số trên slide với run gốc.
@@ -371,45 +373,59 @@ Các chi tiết dưới đây không xác minh được từ repo; trong bài c�
 
 ## Slide 22 — Kết quả Tái tạo: E1 (Science Q&A) & E2 (Tool Use)
 * **Tiêu đề:** KẾT QUẢ TÁI TẠO: ĐỘ CHÍNH XÁC TÁC VỤ MỚI (E1 & E2)
-* **Bảng đối chiếu** (lấy số từ `eval_results/test-*.json`):
+* **Bảng đối chiếu** (`Qwen2.5-7B-Instruct`, greedy, tập test đầy đủ; số liệu: `results/`, sinh bằng `scripts/summarize_results.py`):
 
 | Tác vụ / Phương pháp | Paper (%) | Nhóm (%) | 95% CI nhóm (pp) | $\Delta$ (pp) | Sai số tương đối (%) | W&B Run |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
-| **Science:** Base 7B | ⚠ 32.1 | `[...]` | ±`[...]` | `[...]` | `[...]` | `[...]` |
-| **Science:** SFT (epoch 1) | 66.2 | `[...]` | ±`[...]` | `[...]` | `[...]` | `[...]` |
-| **Science:** SDFT (epoch `[1/2]`) | **70.2** | `[...]` | ±`[...]` | `[...]` | `[...]` | `[...]` |
-| **Tool Use:** Base 7B | ⚠ 42.9 | `[...]` | ±`[...]` | `[...]` | `[...]` | `[...]` |
-| **Tool Use:** SFT (epoch 1) | 63.2 | `[...]` | ±`[...]` | `[...]` | `[...]` | `[...]` |
-| **Tool Use:** SDFT (epoch `[1/2]`) | **70.6** | `[...]` | ±`[...]` | `[...]` | `[...]` | `[...]` |
+| **Science:** Base 7B | ⚠ 32.1 | **32.5** | ±4.1 | +0.4 | 1.4 | `test-base-7b-science` (`dkbn0qev`) |
+| **Science:** SFT (epoch 1) | 66.2 | **36.5** | ±4.2 | −29.7 | 44.9 | `test-sft_science_…_n352_s42-epoch1` (`5ovyo04j`) |
+| **Science:** SDFT (epoch 2, chọn qua val) | **70.2** | **41.2** | ±4.3 | −29.0 | 41.3 | `test-sdft_science_…_forward_s42-epoch2` (`4px6nl5i`) |
+| **Tool Use:** Base 7B | ⚠ 42.9 | **41.2** | ±9.8 | −1.7 | 3.9 | `test-base-7b-tool` (`brrhsz1p`) |
+| **Tool Use:** SFT (epoch 1) | 63.2 | **62.9** | ±9.6 | −0.3 | 0.5 | `test-sft_tool_use_…_n528_s42-epoch1` (`sv8cpi0m`) |
+| **Tool Use:** SDFT (epoch 1) | **70.6** | `[⏳ sdft-B-tool2]` | | | | `test-sdft_tool_use_…_forward_s42-epoch1` |
 
-* **Cách tính:** $\Delta = \text{Nhóm} - \text{Paper}$; sai số tương đối $= |\Delta| / \text{Paper}$; CI $\approx \pm 1.96\sqrt{p(1-p)/n}$ với $n = 507$ (Science), $n = 97$ (Tool Use) → khoảng **±4 pp** (Science) và **±9 pp** (Tool Use) khi $p \approx 0.7$.
-* **Lưu ý khi đọc:** paper báo SDFT − SFT = +4.0 pp (Science) và +7.4 pp (Tool Use) — **cùng cỡ với nhiễu của tập test khi chỉ có 1 seed**. Chỉ kết luận "SDFT > SFT" nếu chênh lệch lớn hơn khoảng CI.
-* **Nhận xét (điền sau khi chạy):** xu hướng `SDFT > SFT > Base` có giữ được với 4-bit QLoRA và tập con 352 / 528 mẫu không: `[...]`
+* **Kiểm định cặp** (cùng 507 / 97 câu hỏi; McNemar chính xác + bootstrap theo cặp 5.000 lần):
+
+| So sánh | $\Delta$ (pp) | 95% CI bootstrap | Chỉ B đúng / chỉ A đúng | McNemar *p* |
+| :--- | :---: | :---: | :---: | :---: |
+| Science 7B: SDFT − SFT | **+4.7** (paper +4.0) | [+0.2, +9.1] | 79 / 55 | **0.047** |
+| Science 7B: SDFT − Base | +8.7 | [+3.6, +13.8] | 108 / 64 | 0.001 |
+| Science 7B: SFT − Base | +3.9 | [−1.2, +8.9] | 92 / 72 | 0.138 |
+| Tool Use 7B: SFT − Base | +21.6 | [+12.4, +32.0] | 25 / 4 | < 0.001 |
+
+* **Cách tính:** $\Delta = \text{Nhóm} - \text{Paper}$; sai số tương đối $= |\Delta| / \text{Paper}$; CI một mô hình $\approx \pm 1.96\sqrt{p(1-p)/n}$ ($n = 507$ Science, $n = 97$ Tool Use).
+* **Nhận xét:**
+  * **Base khớp paper** ở cả hai tác vụ (lệch +0.4 pp và −1.7 pp, nằm trong CI) → prompt, bộ chấm điểm và cách giải mã của nhóm tương đương bản gốc.
+  * **Science: thứ tự SDFT > SFT > Base được giữ**, và khoảng cách SDFT − SFT (+4.7 pp) gần đúng con số của paper (+4.0 pp). Khác biệt có ý nghĩa ở mức 5% nhưng sát ngưỡng (*p* = 0.047, 1 seed).
+  * **Science: mức tuyệt đối thấp hơn paper ~30 pp** cho cả SFT và SDFT: nhóm chỉ train trên 352 mẫu (~13% dữ liệu) với QLoRA 4-bit → SFT 22 bước, SDFT 44 bước. SFT chưa vượt Base có ý nghĩa (*p* = 0.14).
+  * **Tool Use: SFT tái tạo gần như chính xác** (62.9% so với 63.2%).
+  * Lưu ý giao thức: SFT 1 epoch, SDFT 2 epoch (như paper). Val SDFT: epoch 1 = 39.6%, epoch 2 = 41.8%.
 * **IEEE Citation:** `[1, Table 5]`
-* **Speaker Notes:** Slide này đặt kết quả của nhóm cho E1 — chấm bằng cách khớp nội dung thẻ answer — và E2 — chấm bằng cách khớp tên action và tham số JSON — cạnh số liệu Table 5. SFT chỉ huấn luyện một epoch nên dùng epoch 1; SDFT chọn epoch tốt hơn trên tập validation rồi mới đánh giá trên test, đều với greedy decoding. Nhóm báo cáo thêm khoảng tin cậy 95%: với 97 câu Tool Use, sai số vào khoảng chín điểm, nên chênh lệch giữa SFT và SDFT có thể nằm trong vùng nhiễu. Đây là lý do nhóm đọc kết quả theo xu hướng, không theo từng con số.
+* **Speaker Notes:** Slide này đặt kết quả của nhóm cạnh Table 5. Trước hết, mô hình Base cho kết quả gần như trùng với paper ở cả hai tác vụ: 32.5% so với 32.1% trên Science và 41.2% so với 42.9% trên Tool Use. Điều này cho thấy prompt, bộ chấm và cách giải mã của nhóm tương đương bản gốc, nên các khác biệt còn lại đến từ khâu huấn luyện. Trên Science, cả SFT và SDFT đều thấp hơn paper khoảng 30 điểm, vì nhóm chỉ train trên khoảng 13% dữ liệu với QLoRA 4-bit. Tuy vậy, thứ tự giữa các phương pháp được giữ: SDFT hơn SFT 4.7 điểm, rất gần con số 4.0 điểm của paper. Vì hai mô hình trả lời cùng 507 câu hỏi, nhóm dùng kiểm định cặp McNemar và bootstrap theo cặp: chênh lệch có ý nghĩa ở mức 5% nhưng sát ngưỡng, và chỉ có một seed, nên nhóm coi đây là bằng chứng ủng hộ chứ chưa phải kết luận chắc chắn. Trên Tool Use, SFT đạt 62.9%, gần như đúng 63.2% của paper.
 
 ---
 
 ## Slide 23 — Kết quả Tái tạo: Khả năng giữ Kiến thức cũ (6 Benchmarks)
 * **Tiêu đề:** KẾT QUẢ TÁI TẠO: ĐO CATASTROPHIC FORGETTING (6 BENCHMARKS)
-* **Bảng `lm-evaluation-harness`** (mỗi ô: Paper → Nhóm):
+* **Bảng `lm-evaluation-harness`** (mỗi ô: Paper → Nhóm; `--limit 0.25`, `--apply_chat_template`):
 
 | Phương pháp | HellaSwag | HumanEval | IFEval | MMLU | TruthfulQA | Winogrande | Prior Avg |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| Base 7B | 62.0 → `[...]` | 65.8 → `[...]` | 74.3 → `[...]` | 71.7 → `[...]` | 47.9 → `[...]` | 71.1 → `[...]` | 65.5 → `[...]` |
-| SFT (Science) | 55.0 → `[...]` | 54.8 → `[...]` | 35.3 → `[...]` | 64.6 → `[...]` | 36.8 → `[...]` | 73.7 → `[...]` | 53.4 → `[...]` |
-| SDFT (Science) | 60.9 → `[...]` | 68.9 → `[...]` | 66.8 → `[...]` | 70.7 → `[...]` | 46.5 → `[...]` | 73.1 → `[...]` | 64.5 → `[...]` |
-| SFT (Tool Use) | `[T5]` → `[...]` | `[T5]` → `[...]` | `[T5]` → `[...]` | `[T5]` → `[...]` | `[T5]` → `[...]` | `[T5]` → `[...]` | 56.0 → `[...]` |
-| SDFT (Tool Use) | `[T5]` → `[...]` | `[T5]` → `[...]` | `[T5]` → `[...]` | `[T5]` → `[...]` | `[T5]` → `[...]` | `[T5]` → `[...]` | 65.4 → `[...]` |
+| Base 7B | 62.0 → **52.9** | 65.8 → `[⏳]` | 74.3 → **68.4** | 71.7 → **69.1** | 47.9 → **59.8** | 71.1 → **63.4** | 65.5 → `[⏳]` |
+| SFT (Science) | 55.0 → `[⏳]` | 54.8 → `[⏳]` | 35.3 → `[⏳]` | 64.6 → `[⏳]` | 36.8 → `[⏳]` | 73.7 → `[⏳]` | 53.4 → `[⏳]` |
+| SDFT (Science) | 60.9 → `[⏳]` | 68.9 → `[⏳]` | 66.8 → `[⏳]` | 70.7 → `[⏳]` | 46.5 → `[⏳]` | 73.1 → `[⏳]` | 64.5 → `[⏳]` |
+| SFT (Tool Use) | `[T5]` → `[⏳]` | `[T5]` → `[⏳]` | `[T5]` → `[⏳]` | `[T5]` → `[⏳]` | `[T5]` → `[⏳]` | `[T5]` → `[⏳]` | 56.0 → `[⏳]` |
+| SDFT (Tool Use) | `[T5]` → `[⏳]` | `[T5]` → `[⏳]` | `[T5]` → `[⏳]` | `[T5]` → `[⏳]` | `[T5]` → `[⏳]` | `[T5]` → `[⏳]` | 65.4 → `[⏳]` |
 
-  *(`[T5]`: chép số từng benchmark từ Table 5 của paper.)*
+  *(`[T5]`: chép số từng benchmark từ Table 5 của paper. `[⏳]`: đang chạy trên Kaggle — `sdft-B-prior`, `sdft-B-tool2`, ngày 21/11.)*
 * **Ghi chú thực nghiệm:**
-  * Chạy đủ 6 benchmark với `--limit 0.25` (25% số câu mỗi bộ) và `--apply_chat_template`, log lên W&B (`prior-...`).
-  * Metric báo cáo: HellaSwag `acc_norm`, HumanEval `pass@1`, IFEval `prompt_level_strict_acc`, MMLU `acc`, TruthfulQA `truthfulqa_mc2`, Winogrande `acc` (⚠ đối chiếu với metric paper dùng).
-  * Với `--limit 0.25`, HumanEval chỉ còn ~41 bài → riêng cột này nhiễu khoảng ±14 pp.
-  * Kỳ vọng: LoRA giữ nguyên trọng số gốc nên SFT có thể quên **ít hơn** Full FT trong paper, làm khoảng cách SFT–SDFT ở cột Prior Avg nhỏ lại.
+  * Metric: HellaSwag `acc_norm`, HumanEval `pass@1`, IFEval `prompt_level_strict_acc`, MMLU `acc`, TruthfulQA `truthfulqa_mc2`, Winogrande `acc` (⚠ đối chiếu với metric paper dùng). W&B: `prior-base-7b` (`pc471azo`).
+  * Số câu sau `--limit 0.25`: HellaSwag 2.511, MMLU 3.529, Winogrande 317, TruthfulQA 205, IFEval 136, HumanEval 41 → CI khoảng ±2 pp (HellaSwag) đến ±14 pp (HumanEval).
+  * **Sự cố HumanEval:** task `humaneval` gốc là dạng nối tiếp prompt, khi bật chat template thì câu trả lời không ghép được thành hàm → **0/41**. Nhóm chuyển sang `humaneval_instruct` (biến thể cho chat model) và chạy lại.
+  * Base: MMLU, IFEval sát paper (−2.6, −5.9 pp); HellaSwag, Winogrande thấp hơn và TruthfulQA cao hơn paper → khác biệt cấu hình harness (chat template trên các task log-likelihood, tập con 25%), không phải do huấn luyện. Vì vậy **so sánh trong nội bộ nhóm (Base → SFT → SDFT, cùng cấu hình) mới là phép đo mức quên**.
+  * Kỳ vọng: LoRA giữ nguyên trọng số gốc nên SFT có thể quên **ít hơn** Full FT trong paper.
 * **IEEE Citation:** `[1, Table 5], [17]`
-* **Speaker Notes:** Để đo mức quên tương ứng với Table 5, nhóm chạy lm-evaluation-harness trên đủ cả 6 benchmark, nhưng chỉ lấy 25% số câu mỗi bộ để vừa quỹ thời gian T4. Kết quả được log trực tiếp lên W&B. Nhóm đo cho cả mô hình học Science và mô hình học Tool Use. Do LoRA chỉ cập nhật một không gian con hạng thấp và giữ nguyên trọng số nền, mức giảm của SFT được kỳ vọng nhẹ hơn so với full fine-tuning trong bài báo. Cột HumanEval nên đọc thận trọng vì chỉ còn khoảng 41 bài.
+* **Speaker Notes:** Để đo mức quên tương ứng với Table 5, nhóm chạy lm-evaluation-harness trên đủ sáu benchmark, mỗi bộ lấy 25% số câu để vừa quỹ thời gian T4. Với mô hình Base, MMLU và IFEval gần với paper, còn HellaSwag, Winogrande và TruthfulQA lệch theo hai chiều khác nhau, nên nguyên nhân là cấu hình đánh giá chứ không phải mô hình. Vì vậy nhóm chỉ đọc mức quên bằng cách so các mô hình của chính nhóm với nhau dưới cùng một cấu hình. Một sự cố đáng chú ý: task HumanEval dạng gốc cho điểm 0 khi bật chat template, vì câu trả lời dạng hội thoại không nối được vào phần đầu hàm; nhóm chuyển sang biến thể humaneval_instruct và chạy lại.
 
 ---
 
@@ -419,17 +435,18 @@ Các chi tiết dưới đây không xác minh được từ repo; trong bài c�
 
 | Model | Base (%, test) | Teacher `--with_demo` (%, val) | SFT (%, test) | SDFT (%, test) | SDFT − SFT (pp) | Paper (pp) | W&B Run |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| `Qwen2.5-1.5B` | `[...]` | `[...]` | `[...]` | `[...]` | `[...]` | — | `[...]` |
-| `Qwen2.5-3B` | `[...]` | `[...]` | `[...]` | `[...]` | `[...]` | **−3.3** | `[...]` |
-| `Qwen2.5-7B` (từ E1) | `[...]` | `[...]` | `[...]` | `[...]` | `[...]` | **+4.0** | `[...]` |
+| `Qwen2.5-1.5B` | — | — | — | — | — | — | không chạy (hết quota) |
+| `Qwen2.5-3B` | 27.8 | 89.6 | 34.7 | `[⏳ epoch 1]` | `[⏳]` | **−3.3** | `test-sft_science_Qwen2.5-3B-…-epoch1` (`0oxz9j4b`), SDFT train `a0d9b8f7` |
+| `Qwen2.5-7B` (từ E1) | 32.5 | `[⏳]` | 36.5 | 41.2 | **+4.7** | **+4.0** | xem Slide 22 |
 
 * **Ghi chú giao thức:**
-  * 1.5B và 3B đánh giá thẳng trên test (SFT epoch 1, SDFT epoch 2), không chọn epoch qua val như E1 — để tiết kiệm thời gian.
-  * Cột Teacher đo trên **tập val** (134 câu), các cột khác đo trên **tập test** (507 câu).
-  * Cùng tập con 352 mẫu như E1. Nếu không đủ quota, hàng 3B ghi "—".
+  * 3B: SFT epoch 1; SDFT dừng ở bước 41/44 do giới hạn thời gian nên **đánh giá epoch 1** (không có epoch 2). 7B: SDFT epoch 2 chọn qua val.
+  * Cột Teacher đo trên **tập val** (134 câu, có lời giải mẫu trong ngữ cảnh), các cột khác trên **tập test** (507 câu).
+  * 3B: SFT hơn Base +6.9 pp (CI bootstrap [+2.0, +11.8], McNemar *p* = 0.007).
+* **Quan sát:** Teacher 3B đạt 89.6% trên val khi được xem lời giải mẫu, tức "giáo viên" ở 3B vẫn rất mạnh về độ chính xác. Câu hỏi còn mở là học trò 3B có hấp thụ được tín hiệu đó qua SDFT hay không (paper: SDFT thua SFT 3.3 pp ở 3B).
 * **Mục tiêu:** kiểm chứng giả định ICL (Sec. 3.2, 4.4): với mô hình nhỏ, Teacher dù có mẫu trong ngữ cảnh vẫn yếu nên SDFT không thắng SFT; từ 7B mới chuyển sang dương.
 * **IEEE Citation:** `[1, Sec. 4.4, Fig. 5 (trái)]`
-* **Speaker Notes:** Nhóm chạy thêm E3 so sánh SFT và SDFT ở ba kích thước, đồng thời đo độ chính xác của Teacher — tức mô hình được xem lời giải mẫu trong prompt. Nếu Teacher của mô hình nhỏ không tốt hơn Base bao nhiêu, thì giả định In-Context không đứng vững và SDFT không có tín hiệu tốt để học. Lưu ý giao thức của E3 đơn giản hơn E1 và cột Teacher đo trên tập val, nên so sánh giữa các cột chỉ mang tính xu hướng.
+* **Speaker Notes:** Nhóm chạy thêm E3 để so sánh SFT và SDFT theo kích thước mô hình, đồng thời đo độ chính xác của Teacher, tức mô hình được xem lời giải mẫu trong prompt. Do hết quota, nhóm chỉ chạy được 3B và 7B. Ở 7B, SDFT hơn SFT 4.7 điểm, khớp xu hướng của paper. Ở 3B, Teacher đạt gần 90% trên tập val, nên tín hiệu từ giáo viên không yếu về mặt độ chính xác; nếu SDFT 3B vẫn không hơn SFT thì nguyên nhân nằm ở khả năng học trò hấp thụ tín hiệu, không phải ở chất lượng giáo viên. Lưu ý SDFT 3B chỉ có epoch 1 vì phiên Kaggle hết giờ ở bước 41/44.
 
 ---
 
@@ -458,7 +475,8 @@ Các chi tiết dưới đây không xác minh được từ repo; trong bài c�
   * Code gốc sinh rollout bằng `vLLM` kèm importance sampling; nhóm dùng `transformers.generate()` theo batch trên **đúng trọng số student hiện tại** → on-policy chính xác, không cần IS.
 * **Khối giữa (4. Chi phí thực tế):**
   * Paper: SDFT/SFT wall-clock $\approx 4\times$ (H200 + vLLM).
-  * Nhóm (T4, HF generate): SDFT 50.6 s/mẫu Science (pilot), SFT `[...]` s/mẫu (W&B) → tỉ lệ đo được **`[...]×`** (plan dự báo ~11×).
+  * Nhóm (T4, HF generate): SDFT 7B Science **63.4 s/mẫu** (12.4 h cho 44 bước × 16 mẫu; pilot dự báo 50.6), SDFT 7B Tool Use ~52 s/mẫu (≈14 phút/bước, một nửa là sinh rollout); SFT `[...]` s/mẫu (W&B `time/step_sec`) → tỉ lệ **`[...]×`** (plan dự báo ~11×).
+  * Bộ nhớ: SDFT 7B Tool Use bị **CUDA OOM 2 lần** trên T4 16 GB (prompt ToolAlpaca dài): lần 1 ở khâu KL theo từ vựng (sửa bằng KL chia khúc 128 token + `logits_to_keep`), lần 2 ở khâu sinh 8 rollout cùng lúc (sửa: tự chia đôi batch khi OOM, chạy tiếp với nhóm 4 rollout).
 * **Khối phải (5. Seed & nhiễu thống kê):**
   * Paper: ⚠ sweep 27 cấu hình mỗi phương pháp, trung bình **3 seeds** + CI 95%.
   * Nhóm: 1 cấu hình, `seed=42` → không có phương sai giữa các seed.
@@ -518,7 +536,8 @@ Các chi tiết dưới đây không xác minh được từ repo; trong bài c�
   * Báo cáo định lượng độ lệch ($\Delta$, sai số tương đối, CI 95%) và giải trình các nguồn sai số.
 * **Liên kết kiểm chứng:**
   * **GitHub:** `https://github.com/24122040-kin/distillation_enables_continual_learning_hcmus`
-  * **Weights & Biases:** `[https://wandb.ai/<entity>/sdft-continual-learning]`
+  * **Weights & Biases:** `https://wandb.ai/baokin91ltri-tr-ng-i-h-c-khoa-h-c-t-nhi-n-hqg-hcm/sdft-continual-learning` (⚠ đổi project sang Public trước khi nộp)
+  * **Số liệu gốc:** thư mục `results/` (JSON từng câu trả lời) + `python scripts/summarize_results.py results/*` để sinh lại mọi bảng.
 * **IEEE Citation:** `[1], [22]`
 * **Speaker Notes:** Xin cảm ơn thầy và hội đồng. Toàn bộ mã nguồn tự cài đặt, bảng ánh xạ thí nghiệm và các đường dẫn Weights & Biases đều công khai tại kho GitHub của nhóm. Nhóm mong nhận góp ý để hoàn thiện phần Critical Analysis và Empirical Demonstration cho buổi Poster Workshop cuối kỳ.
 

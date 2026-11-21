@@ -17,6 +17,7 @@ import glob
 import json
 import math
 import os
+import random
 import re
 from typing import Dict, List, Optional, Tuple
 
@@ -77,6 +78,7 @@ def load_new_task(dirs: List[str]) -> Dict[Tuple[str, str, str, str], Dict]:
                 "acc": m["acc"], "n": m["n"], "truncated_pct": m.get("truncated_pct"),
                 "epoch": epoch_of(a.get("checkpoint_dir")), "file": os.path.basename(f),
                 "run": a.get("run_name") or os.path.splitext(os.path.basename(f))[0],
+                "per_id": {r["id"]: r["acc"] for r in r.get("records", [])},
             }
     return out
 
@@ -121,6 +123,39 @@ def load_prior(dirs: List[str]) -> Dict[str, Dict]:
             row["humaneval_note"] = "plain humaneval"
         row["run"] = ", ".join(row["runs"])
     return out
+
+
+def paired(a: Dict, b: Dict, n_boot: int = 5000) -> Optional[str]:
+    """Paired comparison of two evaluations on the same questions: difference ``b - a`` (pp), exact
+    McNemar p-value and a paired-bootstrap 95% interval (both runs answered the same items)."""
+    ids = sorted(set(a["per_id"]) & set(b["per_id"]))
+    if not ids:
+        return None
+    x, y = a["per_id"], b["per_id"]
+    only_b = sum(1 for i in ids if y[i] and not x[i])
+    only_a = sum(1 for i in ids if x[i] and not y[i])
+    n, k = only_a + only_b, min(only_a, only_b)
+    p = min(1.0, 2 * sum(math.comb(n, j) for j in range(k + 1)) / 2 ** n) if n else 1.0
+    rng = random.Random(0)
+    diffs = sorted(100.0 * sum(y[i] - x[i] for i in s) / len(ids)
+                   for s in ([rng.choice(ids) for _ in ids] for _ in range(n_boot)))
+    d = 100.0 * sum(y[i] - x[i] for i in ids) / len(ids)
+    lo, hi = diffs[int(0.025 * n_boot)], diffs[int(0.975 * n_boot) - 1]
+    return f"{d:+.1f} | [{lo:+.1f}, {hi:+.1f}] | {only_b} / {only_a} | {p:.3f} | {len(ids)}"
+
+
+def table_paired(new: Dict) -> List[str]:
+    lines = ["## Paired tests on the same test questions", "",
+             "| Comparison (B − A) | Δ (pp) | Paired bootstrap 95% CI | only B / only A correct | McNemar p | n |",
+             "|---|---|---|---|---|---|"]
+    for s in ("3B", "7B"):
+        for task in ("science", "tool_use"):
+            for a, b in (("base", "sft"), ("base", "sdft"), ("sft", "sdft")):
+                ra, rb = new.get((s, task, a, "test")), new.get((s, task, b, "test"))
+                res = paired(ra, rb) if ra and rb else None
+                if res:
+                    lines.append(f"| {s} {task}: {b.upper()} − {a.upper() if a != 'base' else 'Base'} | {res} |")
+    return lines
 
 
 def fmt(x: Optional[float], nd: int = 1) -> str:
@@ -181,7 +216,7 @@ def main() -> None:
     ap.add_argument("dirs", nargs="+", help="eval_results folders; later ones override earlier ones")
     args = ap.parse_args()
     new, prior = load_new_task(args.dirs), load_prior(args.dirs)
-    out = table_new(new) + [""] + table_prior(prior) + [""] + table_scale(new)
+    out = table_new(new) + [""] + table_paired(new) + [""] + table_prior(prior) + [""] + table_scale(new)
     out += ["", "## Every new-task evaluation found", "", "| Model | Task | Method | Split | Epoch | Acc (%) | n | File |",
             "|---|---|---|---|---|---|---|---|"]
     for (s, t, m, sp), r in sorted(new.items()):
